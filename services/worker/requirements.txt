@@ -6,4 +6,4 @@ redis
 psycopg[binary]
 boto3
 requests
-
+openai

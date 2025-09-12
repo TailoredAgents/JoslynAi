@@ -8,6 +8,7 @@ COPY packages/core ./packages/core
 COPY packages/db ./packages/db
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @iep-ally/api build
+COPY services/api/docker-entrypoint.sh ./services/api/docker-entrypoint.sh
+RUN chmod +x ./services/api/docker-entrypoint.sh
 EXPOSE 8080
-CMD ["pnpm","--filter","@iep-ally/api","start"]
-
+ENTRYPOINT ["./services/api/docker-entrypoint.sh"]

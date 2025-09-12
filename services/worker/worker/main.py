@@ -1,4 +1,4 @@
-import os, json, time
+import os, json
 import redis
 from worker.ocr import process_pdf
 from worker.index import embed_and_store
@@ -12,13 +12,12 @@ def health():
 
 def run():
     print("Worker starting; listening on Redis LIST 'jobs'.")
-    # Simple loop consuming a Redis LIST "jobs"
     while True:
         job = r.blpop("jobs", timeout=5)
         if not job:
             continue
         _, payload = job
-        print("Got job:", payload)
+        print("Got job:")
         try:
             task = json.loads(payload)
         except Exception as e:
@@ -27,7 +26,7 @@ def run():
         kind = task.get("kind")
         try:
             if kind == "ingest_pdf":
-                process_pdf(task)
+                task = process_pdf(task)
                 embed_and_store(task)
             elif kind == "extract_iep":
                 extract_iep(task)
@@ -40,4 +39,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-

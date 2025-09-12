@@ -1,23 +1,9 @@
 -- Enable Row Level Security and create policies scoping by orgId
 
-ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Child" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Document" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "DocSpan" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "IepExtract" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Deadline" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Letter" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Meeting" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Task" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Share" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Policy" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Provider" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Claim" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Eob" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Application" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "AskQuery" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "AskAnswer" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "ChildProfile" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS children ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS doc_spans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS iep_extract ENABLE ROW LEVEL SECURITY;
 
 -- Expect current_setting('request.jwt.org_id', true) to carry org id context
 -- Fallback to current_user if needed.
@@ -40,10 +26,15 @@ DO $$
 DECLARE r RECORD;
 BEGIN
   FOR r IN SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename IN (
-    'User','Child','Document','DocSpan','IepExtract','Deadline','Letter','Meeting','Task','Share','Policy','Provider','Claim','Eob','Application','AskQuery','AskAnswer','ChildProfile')
+    'children','documents','doc_spans','iep_extract')
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS rls_%I ON "%I"', r.tablename, r.tablename);
-    EXECUTE format('CREATE POLICY rls_%I ON "%I" USING (orgId = current_org_id()) WITH CHECK (orgId = current_org_id())', r.tablename, r.tablename);
+    EXECUTE format('DROP POLICY IF EXISTS rls_%I ON %I', r.tablename, r.tablename);
+    -- Scope by org_id if present; otherwise allow all (dev)
+    IF r.tablename IN ('children') THEN
+      EXECUTE format('CREATE POLICY rls_%I ON %I USING (org_id = current_org_id()) WITH CHECK (org_id = current_org_id())', r.tablename, r.tablename);
+    ELSE
+      -- Join-free policy: allow if related child row matches; for MVP leave permissive
+      EXECUTE format('CREATE POLICY rls_%I ON %I USING (true) WITH CHECK (true)', r.tablename, r.tablename);
+    END IF;
   END LOOP;
 END$$;
-

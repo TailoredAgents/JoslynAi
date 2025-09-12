@@ -3,17 +3,25 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "echo db has no build step",
+    "build": "tsc -p tsconfig.json",
     "lint": "echo 'no lint in db yet'",
     "typecheck": "echo 'no types in db'",
     "migrate": "prisma db push && prisma db execute --file prisma/extensions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rls.sql --schema prisma/schema.prisma"
   },
   "devDependencies": {
-    "prisma": "5.18.0"
+    "prisma": "5.18.0",
+    "typescript": "5.5.4"
   },
   "dependencies": {
     "@prisma/client": "5.18.0"
   }
 }
-

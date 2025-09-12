@@ -1,7 +1,9 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import multipart from "@fastify/multipart";
 import jwt from "@fastify/jwt";
+import documentsRoutes from "./routes/documents";
+import askRoutes from "./routes/ask";
+import extractRoutes from "./routes/extract";
 
 const app = Fastify({
   logger: {
@@ -14,7 +16,6 @@ const app = Fastify({
 });
 
 await app.register(cors, { origin: true, credentials: true });
-await app.register(multipart);
 await app.register(jwt, { secret: process.env.JWT_SECRET || "dev-secret" });
 
 // Simple auth hook: parse JWT if present; set org_id for RLS context
@@ -33,48 +34,10 @@ app.addHook("preHandler", async (req, _reply) => {
 
 app.get("/health", async () => ({ ok: true }));
 
-app.post("/children/:id/documents", async (req, reply) => {
-  // TODO: accept multipart, upload to S3, enqueue OCR job
-  // For now, return placeholder
-  return reply.send({ status: "queued", documentId: "stub-doc-id" });
-});
-
-app.post("/documents/:id/extract/iep", async (_req, reply) => {
-  return reply.send({ status: "queued", extractId: "stub-extract-id" });
-});
-
-app.get("/documents/:id/brief", async (_req, reply) => {
-  // TODO: query RAG and summarize with citations
-  return reply.send({ brief: "not implemented", citations: [] });
-});
-
-app.post("/children/:id/ask", async (_req, reply) => {
-  return reply.send({ answer: "not found", citations: [] });
-});
-
-app.get("/children/:id/deadlines", async (_req, reply) => {
-  return reply.send({ deadlines: [] });
-});
-
-app.post("/letters", async (_req, reply) => {
-  return reply.send({ id: "stub-letter-id", status: "draft" });
-});
-
-app.post("/letters/:id/render", async (_req, reply) => {
-  return reply.send({ id: "stub-letter-id", status: "rendered" });
-});
-
-app.post("/letters/:id/send", async (_req, reply) => {
-  return reply.send({ id: "stub-letter-id", status: "sent" });
-});
-
-app.post("/share", async (_req, reply) => {
-  return reply.send({ id: "stub-share-id", token: "stub-token" });
-});
-
-app.delete("/share/:id", async (_req, reply) => {
-  return reply.send({ ok: true });
-});
+// Register feature routes
+await app.register(documentsRoutes);
+await app.register(askRoutes);
+await app.register(extractRoutes);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));
@@ -94,4 +57,3 @@ app.listen({ port, host }).then(() => {
   app.log.error(err, "Failed to start API");
   process.exit(1);
 });
-

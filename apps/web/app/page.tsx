@@ -7,6 +7,7 @@ export default function HomePage() {
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [citations, setCitations] = useState<any[]>([]);
 
   async function ask() {
     setLoading(true);
@@ -15,10 +16,11 @@ export default function HomePage() {
       const res = await fetch(`${API_BASE}/children/demo-child/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ query: q }),
       });
       const data = await res.json();
       setAnswer(data?.answer ?? "not found");
+      setCitations(data?.citations ?? []);
     } catch (e) {
       setAnswer("error");
     } finally {
@@ -41,7 +43,19 @@ export default function HomePage() {
           <button className="bg-sky-500 text-white rounded px-3 py-2" onClick={ask} disabled={loading}>{loading ? "Asking..." : "Ask"}</button>
         </div>
         {answer && (
-          <div className="mt-3 text-sm text-slate-700">Answer: {answer}</div>
+          <div className="mt-3 text-sm text-slate-700 space-y-2">
+            <div>Answer: {answer}</div>
+            {citations.length > 0 && (
+              <div>
+                <div className="font-medium">Citations:</div>
+                <ul className="list-disc ml-5 text-slate-600">
+                  {citations.slice(0, 2).map((c, i) => (
+                    <li key={i}>{c.doc_name || c.document_id} p.{c.page}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -53,4 +67,3 @@ export default function HomePage() {
     </div>
   );
 }
-

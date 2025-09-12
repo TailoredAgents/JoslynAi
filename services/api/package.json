@@ -15,6 +15,10 @@
     "@fastify/multipart": "^9.2.1",
     "@fastify/jwt": "^10.0.0",
     "fastify": "^5.6.0",
+    "@aws-sdk/client-s3": "^3.705.0",
+    "ioredis": "^5.4.1",
+    "openai": "^4.57.0",
+    "@prisma/client": "5.18.0",
     "pino": "^9.3.2",
     "undici": "^6.19.8"
   },

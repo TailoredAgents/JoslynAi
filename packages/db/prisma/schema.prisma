@@ -7,163 +7,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-}
+// Minimal schema for Phase 1 vertical slice
 
-model Child {
+model Children {
   id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
+  org_id    String?  @db.Uuid
   name      String
   dob       DateTime?
-  createdAt DateTime @default(now())
+  created_at DateTime @default(now())
+
+  @@map("children")
 }
 
-model Document {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  type      String
-  title     String
-  s3Key     String
-  pages     Int?
-  createdAt DateTime @default(now())
+model Documents {
+  id          String   @id @default(uuid()) @db.Uuid
+  child_id    String   @db.Uuid
+  type        String
+  storage_uri String
+  sha256      String
+  doc_tags    Json
+  created_at  DateTime @default(now())
+
+  @@map("documents")
 }
 
 model DocSpan {
-  id         String   @id @default(uuid()) @db.Uuid
-  orgId      String   @db.Uuid
-  documentId String   @db.Uuid
-  page       Int
-  text       String
-  bbox       String?
-  createdAt  DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  document_id  String   @db.Uuid
+  page         Int
+  bbox         String?
+  text         String
+  created_at   DateTime @default(now())
+
+  @@map("doc_spans")
 }
 
 model IepExtract {
-  id         String   @id @default(uuid()) @db.Uuid
-  orgId      String   @db.Uuid
-  documentId String   @db.Uuid
-  data       Json
-  createdAt  DateTime @default(now())
-}
-
-model Deadline {
-  id          String   @id @default(uuid()) @db.Uuid
-  orgId       String   @db.Uuid
-  childId     String   @db.Uuid
-  description String
-  dueDate     DateTime
-  sourceDocId String?  @db.Uuid
-  createdAt   DateTime @default(now())
-}
-
-model Letter {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  template  String
-  data      Json
-  status    String   @default("draft")
-  createdAt DateTime @default(now())
-}
-
-model Meeting {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  happenedAt DateTime
-  notes     String?
-  createdAt DateTime @default(now())
-}
-
-model Task {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  title     String
-  status    String   @default("todo")
-  createdAt DateTime @default(now())
-}
-
-model Share {
   id           String   @id @default(uuid()) @db.Uuid
-  orgId        String   @db.Uuid
-  resourceType String
-  resourceId   String   @db.Uuid
-  token        String   @unique
-  createdAt    DateTime @default(now())
-}
+  document_id  String   @unique @db.Uuid
+  data         Json
+  created_at   DateTime @default(now())
 
-model Policy {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  name      String
-  data      Json
-  createdAt DateTime @default(now())
+  @@map("iep_extract")
 }
-
-model Provider {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  name      String
-  email     String?
-  createdAt DateTime @default(now())
-}
-
-model Claim {
-  id          String   @id @default(uuid()) @db.Uuid
-  orgId       String   @db.Uuid
-  childId     String   @db.Uuid
-  claimNumber String?
-  providerId  String?  @db.Uuid
-  status      String   @default("open")
-  createdAt   DateTime @default(now())
-}
-
-model Eob {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  claimId   String   @db.Uuid
-  data      Json
-  createdAt DateTime @default(now())
-}
-
-model Application {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  kind      String
-  data      Json
-  createdAt DateTime @default(now())
-}
-
-model AskQuery {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  question  String
-  lang      String   @default("en")
-  createdAt DateTime @default(now())
-}
-
-model AskAnswer {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  queryId   String   @db.Uuid
-  answer    String
-  citations Json
-  createdAt DateTime @default(now())
-}
-
-model ChildProfile {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @db.Uuid
-  childId   String   @db.Uuid
-  data      Json
-  createdAt DateTime @default(now())
-}
-

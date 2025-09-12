@@ -8,5 +8,4 @@ COPY services/worker ./services/worker
 COPY packages/core ./packages/core
 ENV PYTHONUNBUFFERED=1
 EXPOSE 9090
-CMD ["python","-m","services.worker.main"]
-
+CMD ["python","-m","worker.main"]
