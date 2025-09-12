@@ -7,5 +7,6 @@ RUN pip install --no-cache-dir -r services/worker/requirements.txt
 COPY services/worker ./services/worker
 COPY packages/core ./packages/core
 ENV PYTHONUNBUFFERED=1
+WORKDIR /app/services/worker
 EXPOSE 9090
 CMD ["python","-m","worker.main"]
