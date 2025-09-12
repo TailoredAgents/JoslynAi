@@ -1,0 +1,26 @@
+{
+  "name": "@iep-ally/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "echo 'no lint yet'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.2.1",
+    "@fastify/jwt": "^10.0.0",
+    "fastify": "^5.6.0",
+    "pino": "^9.3.2",
+    "undici": "^6.19.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.2",
+    "typescript": "5.5.4",
+    "@types/node": "20.14.12"
+  }
+}

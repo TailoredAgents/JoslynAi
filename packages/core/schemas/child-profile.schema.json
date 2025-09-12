@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iep-ally.dev/schemas/child-profile.schema.json",
+  "title": "ChildProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "dob": { "type": "string" },
+    "languages": { "type": "array", "items": { "type": "string" } },
+    "strengths": { "type": "array", "items": { "type": "string" } },
+    "needs": { "type": "array", "items": { "type": "string" } },
+    "accommodations": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["name"]
+}
+

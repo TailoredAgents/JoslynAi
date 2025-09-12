@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iep-ally.dev/schemas/eob.schema.json",
+  "title": "EOBExtract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "member": { "type": "object", "properties": { "name": { "type": "string" } }, "additionalProperties": false },
+    "claim_number": { "type": "string" },
+    "provider": { "type": "string" },
+    "amount_billed": { "type": "number" },
+    "amount_allowed": { "type": "number" },
+    "amount_member_owes": { "type": "number" },
+    "denial_reason": { "type": "string" },
+    "citations": { "type": "array", "items": { "type": "object", "properties": {
+      "doc_id": { "type": "string" },
+      "page": { "type": "integer" },
+      "quote": { "type": "string" }
+    }, "required": ["doc_id", "page"] } }
+  },
+  "required": ["citations"]
+}
+

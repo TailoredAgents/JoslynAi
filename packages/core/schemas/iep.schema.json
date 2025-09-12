@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iep-ally.dev/schemas/iep.schema.json",
+  "title": "IEPExtract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "student": { "type": "object", "additionalProperties": false, "properties": {
+      "name": { "type": "string" },
+      "dob": { "type": "string" },
+      "id": { "type": "string" }
+    }} ,
+    "services": { "type": "array", "items": { "type": "object", "properties": {
+      "type": { "type": "string" },
+      "minutes_per_week": { "type": "number" },
+      "location": { "type": "string" }
+    }, "required": ["type"] }},
+    "goals": { "type": "array", "items": { "type": "object", "properties": {
+      "area": { "type": "string" },
+      "goal": { "type": "string" },
+      "page": { "type": "integer" }
+    }, "required": ["goal"] }},
+    "citations": { "type": "array", "items": { "type": "object", "properties": {
+      "doc_id": { "type": "string" },
+      "page": { "type": "integer" },
+      "quote": { "type": "string" }
+    }, "required": ["doc_id", "page"] } }
+  },
+  "required": ["student", "citations"]
+}
+

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "IEP Ally",
+    "slug": "iep-ally",
+    "scheme": "iepally",
+    "platforms": ["ios", "android"],
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic"
+  }
+}
+

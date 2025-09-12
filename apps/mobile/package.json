@@ -1,0 +1,15 @@
+{
+  "name": "@iep-ally/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "expo start"
+  },
+  "dependencies": {
+    "expo": "~51.0.15",
+    "react": "19.0.0",
+    "react-native": "0.75.1"
+  }
+}
+

@@ -1,0 +1,9 @@
+pymupdf
+pypdfium2
+ocrmypdf
+pytesseract
+redis
+psycopg[binary]
+boto3
+requests
+

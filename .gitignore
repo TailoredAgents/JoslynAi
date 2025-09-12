@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+.turbo/
+.DS_Store
+coverage/
+*.log
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
+docker-data/
+.idea/
+.vscode/
+pnpm-debug.log
+

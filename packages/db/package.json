@@ -1,0 +1,19 @@
+{
+  "name": "@iep-ally/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo db has no build step",
+    "lint": "echo 'no lint in db yet'",
+    "typecheck": "echo 'no types in db'",
+    "migrate": "prisma db push && prisma db execute --file prisma/extensions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rls.sql --schema prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "prisma": "5.18.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.18.0"
+  }
+}
+
