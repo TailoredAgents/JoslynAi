@@ -20,6 +20,7 @@ import eligibilityRoutes from "./routes/eligibility";
 import adminRules from "./routes/admin/rules";
 import agentRoutes from "./routes/agent";
 import nbsRoutes from "./routes/next-best-steps";
+import adminUsage from "./routes/admin/usage";
 
 const app = Fastify({
   logger: {
@@ -75,6 +76,7 @@ await app.register(eligibilityRoutes);
 await app.register(adminRules);
 await app.register(agentRoutes);
 await app.register(nbsRoutes);
+await app.register(adminUsage);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));
