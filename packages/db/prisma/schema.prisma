@@ -13,6 +13,7 @@ model Children {
   id        String   @id @default(uuid()) @db.Uuid
   org_id    String?  @db.Uuid
   name      String
+  school_name String?
   dob       DateTime?
   created_at DateTime @default(now())
 
@@ -118,4 +119,40 @@ model eobs {
   created_at     DateTime @default(now())
 
   @@unique([document_id])
+}
+
+model glossaries {
+  id         String   @id @default(uuid()) @db.Uuid
+  org_id     String
+  terms_json Json
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([org_id])
+}
+
+model share_links {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String
+  resource_type String
+  resource_id   String
+  token         String   @unique
+  expires_at    DateTime?
+  created_at    DateTime @default(now())
+}
+
+model child_profile {
+  id          String   @id @default(uuid()) @db.Uuid
+  child_id    String
+  profile_json Json
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model events {
+  id           String   @id @default(uuid()) @db.Uuid
+  org_id       String?
+  type         String
+  payload_json Json
+  created_at   DateTime @default(now())
 }

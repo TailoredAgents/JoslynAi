@@ -18,13 +18,13 @@ function rrfFuse(lex: Span[], vec: Span[], k = 60, top = 12): Span[] {
     .slice(0, top);
 }
 
-export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12) {
+export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12, docId?: string) {
   const lex = await prisma.$queryRawUnsafe(
     `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
             ts_rank_cd(ds.tsv, plainto_tsquery('english', $1)) AS "scoreLex"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id
-     WHERE d.child_id = $2
+     WHERE d.child_id = $2 ${docId ? `AND ds.document_id = '${docId}'` : ''}
      ORDER BY "scoreLex" DESC
      LIMIT 30`,
     query,
@@ -38,7 +38,7 @@ export async function retrieveForAsk(prisma: any, openai: any, childId: string, 
             1 - (ds.embedding <=> ${vecStr}) AS "scoreVec"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id
-     WHERE d.child_id = $1
+     WHERE d.child_id = $1 ${docId ? `AND ds.document_id = '${docId}'` : ''}
      ORDER BY ds.embedding <=> ${vecStr}
      LIMIT 30`,
     childId

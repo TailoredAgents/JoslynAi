@@ -13,6 +13,11 @@ import letterTool from "./tools/letter";
 import smartAttachments from "./tools/smart-attachments";
 import adminDeadlines from "./routes/admin/deadlines";
 import internalEob from "./routes/internal/eob";
+import translateTools from "./tools/translate";
+import profileRoutes from "./routes/profile";
+import icsRoutes from "./routes/ics";
+import eligibilityRoutes from "./routes/eligibility";
+import adminRules from "./routes/admin/rules";
 
 const app = Fastify({
   logger: {
@@ -27,7 +32,12 @@ const app = Fastify({
 await app.register(cors, { origin: true, credentials: true });
 await app.register(jwt, { secret: process.env.JWT_SECRET || "dev-secret" });
 await app.register(cors, { origin: (_origin, cb) => cb(null, true), credentials: true });
-await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
+await app.register(rateLimit, {
+  max: 300,
+  timeWindow: "1 minute",
+  keyGenerator: (req: any) =>
+    (req.headers["x-org-id"] as string) || (req.user?.org_id as string) || (req as any).orgId || req.ip,
+});
 
 // Simple auth hook: parse JWT if present; set org_id for RLS context
 app.addHook("preHandler", async (req, _reply) => {
@@ -56,6 +66,11 @@ await app.register(letterTool);
 await app.register(smartAttachments);
 await app.register(adminDeadlines);
 await app.register(internalEob);
+await app.register(translateTools);
+await app.register(profileRoutes);
+await app.register(icsRoutes);
+await app.register(eligibilityRoutes);
+await app.register(adminRules);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));

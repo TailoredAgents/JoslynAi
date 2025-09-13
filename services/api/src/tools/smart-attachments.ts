@@ -1,6 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
 import { SMART_ATTACHMENT_MAP } from "@iep-ally/core/smart_attachments/map";
+import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
+import { OpenAI } from "openai";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/smart-attachments/suggest", async (req, reply) => {
@@ -15,14 +17,22 @@ export default async function routes(app: FastifyInstance) {
       take: 20,
     });
 
-    const suggestions = (docs as any[]).slice(0, limit).map((d) => ({
-      document_id: d.id,
-      doc_name: d.original_name || d.type,
-      pages: [],
-      rationale: (rules.find((r: any) => r.tags.some((t: string) => (d.doc_tags || []).includes(t)))?.rationale) || "Relevant evidence",
-    }));
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const suggestions: any[] = [];
+    for (const d of (docs as any[])) {
+      const rule = rules.find((r: any) => r.tags.some((t: string) => (d.doc_tags || []).includes(t)));
+      const query = rule?.query || "supporting evidence";
+      const spans = await retrieveForAsk(prisma as any, openai as any, d.child_id, query, 8, d.id);
+      const pages = Array.from(new Set((spans as any[]).map((s: any) => s.page))).slice(0, 4);
+      suggestions.push({
+        document_id: d.id,
+        doc_name: d.original_name || d.type,
+        pages,
+        rationale: rule?.rationale || "Relevant evidence",
+      });
+      if (suggestions.length >= limit) break;
+    }
 
     return reply.send({ suggestions });
   });
 }
-

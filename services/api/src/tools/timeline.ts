@@ -15,7 +15,8 @@ export default async function routes(app: FastifyInstance) {
     const dl = await (prisma as any).deadlines.create({
       data: { child_id, kind, base_date: new Date(base_date), due_date: due, jurisdiction }
     });
+    // audit event
+    await (prisma as any).events.create({ data: { org_id: (req as any).orgId || null, type: "deadline_create", payload_json: { child_id, kind, base_date, due_date: due } } });
     return reply.send({ deadline_id: dl.id, due_date: dl.due_date, description: rule.description, source_url: rule.source_url });
   });
 }
-

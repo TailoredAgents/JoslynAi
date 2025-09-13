@@ -88,7 +88,7 @@ export default async function routes(app: FastifyInstance) {
     });
 
     await (prisma as any).letters.update({ where: { id: letter_id }, data: { status: "sent", sent_via: "email", sent_at: new Date() } });
+    await (prisma as any).events.create({ data: { org_id: (req as any).orgId || null, type: "letter_send", payload_json: { letter_id, to } } });
     return reply.send({ ok: true });
   });
 }
-
