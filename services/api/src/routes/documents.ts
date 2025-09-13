@@ -79,15 +79,8 @@ export default async function routes(fastify: FastifyInstance) {
 
     if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
 
-    // create job and enqueue
-    let job_id: string | undefined;
-    try {
-      const job = await (prisma as any).job_runs.create({ data: { child_id: childId, type: "upload", status: "pending", payload_json: { document_id: documentId, s3_key: key } } });
-      job_id = job.id;
-    } catch {}
+    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename });
 
-    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename, job_id });
-
-    return reply.send({ document_id: documentId, storage_key: key, job_id });
+    return reply.send({ document_id: documentId, storage_key: key });
   });
 }

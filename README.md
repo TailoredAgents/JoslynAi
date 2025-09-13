@@ -1,58 +1,82 @@
-IEP Ally — Monorepo Scaffold
+IEP Ally — Monorepo
+
+Overview
+
+- An AI assistant for IEP/504 and benefits workflows. Upload PDFs, ask questions with citations, generate briefs, draft/render/send letters, compute deadlines, track claims, and share a bilingual “About My Child” profile.
+
+Tech Stack
+
+- Web: Next.js 15, React 19, Tailwind, NextAuth
+- API: Fastify + TypeScript, Prisma, OpenAI SDK, S3 presigner, ioredis, pdfkit, nodemailer
+- Worker: Python 3.13 OCR/indexer (Tesseract, PyMuPDF, OpenAI embeddings)
+- Data: Postgres 16 + pgvector + tsvector, Redis 7, S3-compatible object storage (MinIO in dev)
 
 Getting Started
 
-- Copy env: `cp .env.example .env` and fill keys.
+- Copy env: `cp .env.example .env` and fill keys (at least `OPENAI_API_KEY`).
 
 Local dev (Docker Compose)
 
-- `docker compose up --build` to start Postgres, Redis, API, Web, Worker.
-- Open web at http://localhost:3000 and API at http://localhost:8080/health.
+- Quick start with Makefile:
+  - `make up` — build and start Postgres, Redis, MinIO, Mailhog, API, Web, Worker
+  - `make logs-api` — tail API logs (or `make logs`, `make logs-web`, `make logs-worker`)
+  - `make down` — stop everything
+- Open Web: http://localhost:3000
+- API Health: http://localhost:8080/health
+- Mailhog (dev email inbox): http://localhost:8025
 
-Local dev (separate)
+Database
+
+- Migrate schema and enable extensions/triggers:
+  - `make migrate`
+  - or: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/iep_ally pnpm db:migrate`
+
+Local dev (without Compose)
 
 - API: `pnpm dev:api` (PORT 8080)
 - Web: `pnpm dev:web` (PORT 3000)
 - Worker: `python -m services.worker.main`
-- Infra: `docker run --name iep-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=iep_ally -p 5432:5432 -d postgres:16`
-         `docker run --name iep-redis -p 6379:6379 -d redis:7`
+- You must provide Postgres/Redis/MinIO yourself (see docker-compose.yml for ports and envs).
 
-Database
+End-to-end demo
 
-- Migrate schema and enable extensions/RLS:
-  `DATABASE_URL=postgres://postgres:postgres@localhost:5432/iep_ally pnpm db:migrate`
+1) `make up` and wait for services to start
+2) Visit http://localhost:3000/onboarding
+   - Step 1: Create a child
+   - Step 2: Click “Use sample” to upload a minimal PDF; watch status
+   - Step 3: “Load brief” and “Ask about services & minutes”
+   - Step 4: Draft → Render → Send letter; view email in Mailhog (http://localhost:8025)
 
-Render deploy
+Admin (dev)
 
-- Push to GitHub. In Render, create a new Blueprint using `infra/render.yaml`.
-- Set env: `OPENAI_API_KEY`, S3/R2 creds, etc.
+- Set `NEXT_PUBLIC_ADMIN_API_KEY` in `.env` (example provided).
+- Admin menu exposes:
+  - Rules — edit timeline rules (jurisdiction, kind, delta_days, description, source)
+  - Deadlines — list/filter deadlines
+  - Usage — feature metrics and model cost aggregation
 
 Services
 
-- Web (Next.js 15, React 19): basic PWA skeleton with Ask bar calling API.
-- API (Fastify + TS): minimal endpoints; stubs for tools and features.
-- Worker (Python 3.13): OCR/index/extract skeleton; Redis LIST consumer.
-- DB (Postgres 16 + Prisma): core tables, extensions, RLS policies.
+- Web (apps/web)
+- API (services/api)
+- Worker (services/worker)
+- DB schema + extensions (packages/db)
 
 Minimal endpoints
 
 - GET /health → `{ ok: true }`
-- POST /children/:id/ask → `{ answer: "not found", citations: [] }`
+- POST /children/:id/ask → `{ answer, citations }`
 
-Dockerfiles
+Deploy (Render)
 
-- `infra/docker/*.Dockerfile` build web, api, worker. Note: requires a `pnpm-lock.yaml`.
+- Push to GitHub. In Render, create a new Blueprint with `infra/render.yaml`.
+- Provide env vars: `OPENAI_API_KEY`, S3/R2 creds, Stripe (optional), admin/internal keys, etc.
 
-Notes
+Dev samples
 
-- Render has no object storage: use AWS S3 or Cloudflare R2.
-- Cron/background work: use the private worker service and a scheduler later.
+- `dev_samples/` contains placeholders for redacted demo docs.
 
-Dev Samples
+Prompts & templates
 
-- `dev_samples/` contains placeholders for demo docs.
-
-Agent Rules (prompts)
-
-- See `packages/core/prompts/*` for system instructions.
+- See `packages/core/prompts/*` and `packages/core/templates/*`.
 
