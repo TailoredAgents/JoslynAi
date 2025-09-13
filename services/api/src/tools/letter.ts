@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import Mustache from "mustache";
 import { prisma } from "../lib/db";
 import { OpenAI } from "openai";
+import { MODEL_RATES, computeCostCents } from "../lib/pricing";
 
 const TPL_DIR = path.join(process.cwd(), "packages/core/templates/letters");
 
@@ -31,6 +32,12 @@ export default async function routes(app: FastifyInstance) {
       ]
     } as any);
     const polished = (resp as any)?.output?.[0]?.content?.[0]?.text || draft;
+    try {
+      const u = (resp as any)?.usage || {};
+      const model = (resp as any)?.model || (process.env.OPENAI_MODEL_MINI || "gpt-5-mini");
+      const cost = computeCostCents({ model, input_tokens: u.input_tokens||0, output_tokens: u.output_tokens||0, cached_tokens: u.cached_tokens||0 }, MODEL_RATES);
+      await (prisma as any).agent_runs.create({ data: { org_id: (req as any).orgId || null, user_id: null, child_id: merge_fields.child_id, intent: "letter_draft", route: "/tools/letter/draft", inputs_json: { kind }, outputs_json: { text: polished }, tokens: (u.input_tokens||0)+(u.output_tokens||0), cost_cents: cost } });
+    } catch {}
 
     const row = await (prisma as any).letters.create({
       data: {

@@ -36,6 +36,16 @@ def embed_and_store(task: dict):
     document_id = task["document_id"]
     pages = task.get("pages") or []
     print(f"[INDEX] Embedding and storing spans for document_id={document_id}")
+    # Idempotency: skip if already indexed
+    try:
+        if DB_URL:
+            with psycopg.connect(DB_URL) as conn:
+                cnt = conn.execute("SELECT COUNT(*) FROM doc_spans WHERE document_id=%s", (document_id,)).fetchone()[0]
+                if cnt and cnt > 0:
+                    print("[INDEX] Spans already exist; skipping embed")
+                    return
+    except Exception as e:
+        print("[INDEX] idempotency check failed:", e)
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -74,5 +84,8 @@ def embed_and_store(task: dict):
                     """,
                     (document_id, m["page"], None, text[:4000])
                 )
+        try:
+            conn.execute("UPDATE documents SET processed_at = NOW() WHERE id=%s", (document_id,))
+        except Exception:
+            pass
         conn.commit()
-

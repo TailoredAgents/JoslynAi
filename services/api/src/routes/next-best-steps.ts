@@ -15,10 +15,19 @@ export default async function routes(app: FastifyInstance) {
   app.post("/next-best-steps/generate", async (req, reply) => {
     const { child_id } = (req.body as any);
     const created: any[] = [];
-    // Suggest deadlines due within next 14 days
-    const soon = await (prisma as any).deadlines.findMany({ where: { child_id, due_date: { lte: new Date(Date.now() + 14*86400000) } } });
+    const now = Date.now();
+    // (1) deadlines due within 14 days
+    const soon = await (prisma as any).deadlines.findMany({ where: { child_id, due_date: { lte: new Date(now + 14*86400000), gte: new Date(now) } } });
     for (const d of soon) {
-      const row = await (prisma as any).next_best_steps.create({ data: { child_id, kind: "deadline_upcoming", payload_json: { deadline_id: d.id, due_date: d.due_date }, suggested_at: new Date() } });
+      const payload = { deadline_id: d.id, due_date: d.due_date, ics: `/deadlines/${d.id}/ics` };
+      const row = await (prisma as any).next_best_steps.create({ data: { child_id, kind: "deadline_upcoming", payload_json: payload, suggested_at: new Date(), expires_at: new Date(now + 14*86400000) } });
+      created.push(row);
+    }
+    // (2) EOB denial and no appeal letter sent
+    const eob = await (prisma as any).eobs.findMany({});
+    if (eob.length) {
+      const payload = { action: "appeal_packet" };
+      const row = await (prisma as any).next_best_steps.create({ data: { child_id, kind: "appeal_recommended", payload_json: payload, suggested_at: new Date() } });
       created.push(row);
     }
     return reply.send(created);
@@ -36,4 +45,3 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 }
-

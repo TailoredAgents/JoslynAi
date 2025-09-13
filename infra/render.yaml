@@ -69,6 +69,16 @@ services:
         generateValue: true
       - key: INTERNAL_API_KEY
         generateValue: true
+      - key: MODEL_RATES_JSON
+        value: '{"gpt-5":{"in":0.000002,"out":0.000006},"gpt-5-mini":{"in":0.000001,"out":0.000003},"gpt-5-nano":{"in":0.0000002,"out":0.0000004},"default":{"in":0.000002,"out":0.000006}}'
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PRICE_BASIC
+        sync: false
+      - key: PRICE_PRO
+        sync: false
 
   - type: private_service
     name: iep-ally-worker
@@ -110,6 +120,8 @@ services:
         fromService:
           name: iep-ally-api
           type: web
+      - key: RETENTION_DAYS
+        value: 365
       - key: API_URL
         fromService:
           name: iep-ally-api

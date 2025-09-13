@@ -42,23 +42,37 @@ export default async function routes(fastify: FastifyInstance) {
           sha256,
           doc_tags: [],
           original_name: data.filename,
+          version: 1,
         },
         select: { id: true },
       });
       documentId = doc?.id;
     } catch {}
 
+    // dedupe by sha256+child
     if (!documentId) {
+      const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256 } }).catch(()=>null);
+      if (existing?.id) {
+        return reply.send({ document_id: existing.id, storage_key: existing.storage_uri });
+      }
+      // compute version by child+type
+      let version = 1;
+      try {
+        const sameType = await (prisma as any).documents.findMany({ where: { child_id: childId, type: guessDocType(data.filename) }, select: { version: true } });
+        const maxV = Math.max(0, ...sameType.map((x:any)=>x.version||0));
+        version = maxV + 1;
+      } catch {}
       const row = await prisma.$queryRawUnsafe(
-        `INSERT INTO documents (child_id, type, storage_uri, sha256, doc_tags, original_name)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO documents (child_id, type, storage_uri, sha256, doc_tags, original_name, version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
         childId,
         guessDocType(data.filename),
         key,
         sha256,
         JSON.stringify([]),
-        data.filename
+        data.filename,
+        version
       ) as any as { id: string }[];
       documentId = (row as any)[0]?.id;
     }

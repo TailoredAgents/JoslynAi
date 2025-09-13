@@ -21,6 +21,11 @@ import adminRules from "./routes/admin/rules";
 import agentRoutes from "./routes/agent";
 import nbsRoutes from "./routes/next-best-steps";
 import adminUsage from "./routes/admin/usage";
+import redact from "./mw/redact";
+import dsrRoutes from "./routes/dsr";
+import billingRoutes from "./routes/billing";
+import billingUi from "./routes/billing-ui";
+import invitesRoutes from "./routes/invites";
 
 const app = Fastify({
   logger: {
@@ -41,6 +46,7 @@ await app.register(rateLimit, {
   keyGenerator: (req: any) =>
     (req.headers["x-org-id"] as string) || (req.user?.org_id as string) || (req as any).orgId || req.ip,
 });
+await app.register(redact);
 
 // Simple auth hook: parse JWT if present; set org_id for RLS context
 app.addHook("preHandler", async (req, _reply) => {
@@ -77,6 +83,10 @@ await app.register(adminRules);
 await app.register(agentRoutes);
 await app.register(nbsRoutes);
 await app.register(adminUsage);
+await app.register(dsrRoutes);
+await app.register(billingRoutes);
+await app.register(billingUi);
+await app.register(invitesRoutes);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));

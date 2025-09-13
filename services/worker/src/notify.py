@@ -28,6 +28,13 @@ def tick():
           conn.commit()
         except Exception as e:
           print("[NOTIFY] send failed:", e)
+      # retention purge (simple)
+      try:
+        days = int(os.getenv("RETENTION_DAYS", "365"))
+        conn.execute("DELETE FROM events WHERE created_at < NOW() - INTERVAL '%s days'", (days,))
+        conn.execute("DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '%s days'", (days,))
+        conn.commit()
+      except Exception:
+        pass
   except Exception as e:
     print("[NOTIFY] tick error:", e)
-

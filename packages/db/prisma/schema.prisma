@@ -28,6 +28,8 @@ model Documents {
   sha256      String
   doc_tags    Json
   original_name String?
+  version     Int      @default(1)
+  processed_at DateTime?
   created_at  DateTime @default(now())
 
   @@map("documents")
@@ -198,7 +200,42 @@ model child_profile {
 model events {
   id           String   @id @default(uuid()) @db.Uuid
   org_id       String?
+  user_id      String?
   type         String
   payload_json Json
   created_at   DateTime @default(now())
+}
+
+model org_settings {
+  id          String   @id @default(uuid()) @db.Uuid
+  org_id      String   @unique
+  retain_days Int      @default(365)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model orgs {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  created_at  DateTime @default(now())
+}
+
+model org_members {
+  id        String   @id @default(uuid()) @db.Uuid
+  org_id    String
+  user_id   String
+  role      String
+  created_at DateTime @default(now())
+
+  @@index([org_id, user_id])
+}
+
+model invites {
+  id        String   @id @default(uuid()) @db.Uuid
+  org_id    String
+  email     String
+  role      String
+  token     String   @unique
+  accepted_at DateTime?
+  created_at DateTime @default(now())
 }
