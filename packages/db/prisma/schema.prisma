@@ -101,7 +101,7 @@ model letters {
 model claims {
   id                   String   @id @default(uuid()) @db.Uuid
   child_id             String
-  service_date         String?
+  service_date         DateTime?
   provider             String?
   amounts_json         Json?
   status               String   @default("open")
@@ -116,4 +116,6 @@ model eobs {
   parsed_json    Json?
   explanation_text String?
   created_at     DateTime @default(now())
+
+  @@unique([document_id])
 }

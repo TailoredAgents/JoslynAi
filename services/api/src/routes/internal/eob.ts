@@ -1,0 +1,56 @@
+import { FastifyInstance } from "fastify";
+import { prisma } from "../../lib/db";
+
+export default async function routes(app: FastifyInstance) {
+  app.addHook("onRequest", async (req, reply) => {
+    if ((req.headers["x-internal-key"] as string | undefined) !== process.env.INTERNAL_API_KEY) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+  });
+
+  app.post("/internal/eob/ingest", async (req, reply) => {
+    const { child_id, document_id, parsed } = (req.body as any);
+    const existing = await (prisma as any).claims.findFirst({
+      where: {
+        child_id,
+        service_date: parsed?.service_date ? new Date(parsed.service_date) : undefined,
+        provider: parsed?.provider || undefined,
+      },
+    });
+
+    let linked: any[] = [];
+    if (existing?.linked_document_ids) {
+      try { linked = Array.isArray(existing.linked_document_ids) ? existing.linked_document_ids : []; } catch {}
+    }
+    if (!linked.includes(document_id)) linked.push(document_id);
+
+    const claim = existing
+      ? await (prisma as any).claims.update({
+          where: { id: existing.id },
+          data: {
+            amounts_json: parsed?.amounts ?? existing.amounts_json,
+            status: existing.status ?? "open",
+            linked_document_ids: linked,
+          },
+        })
+      : await (prisma as any).claims.create({
+          data: {
+            child_id,
+            service_date: parsed?.service_date ? new Date(parsed.service_date) : null,
+            provider: parsed?.provider ?? null,
+            amounts_json: parsed?.amounts ?? {},
+            status: "open",
+            linked_document_ids: [document_id],
+          },
+        });
+
+    const e = await (prisma as any).eobs.upsert({
+      where: { document_id },
+      update: { claim_id: claim.id, parsed_json: parsed },
+      create: { claim_id: claim.id, document_id, parsed_json: parsed, explanation_text: null },
+    });
+
+    return reply.send({ ok: true, claim_id: claim.id, eob_id: e.id });
+  });
+}
+

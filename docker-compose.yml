@@ -44,6 +44,8 @@ services:
       MAIL_HOST: mailhog
       MAIL_PORT: 1025
       MAIL_FROM: no-reply@iep-ally.local
+      ADMIN_API_KEY: dev-admin
+      INTERNAL_API_KEY: dev-internal
     depends_on:
       - postgres
       - redis
@@ -74,6 +76,8 @@ services:
       S3_BUCKET: iep-ally
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
+      INTERNAL_API_KEY: dev-internal
+      API_URL: http://api:8080
     depends_on:
       - postgres
       - redis

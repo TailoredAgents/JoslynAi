@@ -4,12 +4,10 @@ import { OpenAI } from "openai";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { claimId: string } }>("/claims/:claimId/explain", async (req, reply) => {
-    const claim = await (prisma as any).claims.findUnique({ where: { id: (req.params as any).claimId }, include: { eobs: true } }).catch(() => null);
+    const claim = await (prisma as any).claims.findUnique({ where: { id: (req.params as any).claimId } }).catch(() => null);
     if (!claim) return reply.status(404).send({ error: "not found" });
-
+    const eob = await (prisma as any).eobs.findFirst({ where: { claim_id: (req.params as any).claimId } });
     const amounts = (claim as any).amounts_json || {};
-    const eobs = (claim as any).eobs || [];
-    const eob = eobs[0];
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const text = JSON.stringify({ amounts, denial_reason: eob?.parsed_json?.denial_reason });
 
@@ -24,4 +22,3 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ explanation: out, amounts, denial_reason: eob?.parsed_json?.denial_reason || null });
   });
 }
-

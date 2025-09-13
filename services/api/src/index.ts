@@ -11,6 +11,8 @@ import { ensureBucket } from "./lib/s3-init";
 import timelineTool from "./tools/timeline";
 import letterTool from "./tools/letter";
 import smartAttachments from "./tools/smart-attachments";
+import adminDeadlines from "./routes/admin/deadlines";
+import internalEob from "./routes/internal/eob";
 
 const app = Fastify({
   logger: {
@@ -52,6 +54,8 @@ await app.register(eobRoutes);
 await app.register(timelineTool);
 await app.register(letterTool);
 await app.register(smartAttachments);
+await app.register(adminDeadlines);
+await app.register(internalEob);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));

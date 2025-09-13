@@ -65,7 +65,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
 
-    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId });
+    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename });
 
     return reply.send({ document_id: documentId, storage_key: key });
   });
