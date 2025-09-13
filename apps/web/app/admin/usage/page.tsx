@@ -15,18 +15,35 @@ type UsageResp = {
 export default function AdminUsagePage() {
   const [data, setData] = useState<UsageResp | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [qKey, setQKey] = useState<string>("");
+
+  // Persist adminkey if provided (dev convenience)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const key = sp.get('adminkey') || '';
+      setQKey(key);
+      if (key) localStorage.setItem('adminKey', key);
+    }
+  }, []);
+
   const from = new Date(Date.now() - 30*24*3600*1000).toISOString().slice(0,10);
   const to = new Date().toISOString().slice(0,10);
 
   useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_ADMIN_API_KEY;
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"}/admin/usage?from=${from}&to=${to}`, {
-      headers: { "x-admin-api-key": key || "" }
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+    const headerKey =
+      qKey ||
+      (typeof window !== "undefined" ? localStorage.getItem("adminKey") ?? "" : "") ||
+      (process.env.NEXT_PUBLIC_ADMIN_API_KEY ?? "");
+
+    fetch(`${base}/admin/usage?from=${from}&to=${to}`, {
+      headers: { "x-admin-api-key": headerKey as string }
     })
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(setData)
       .catch(e => setError(String(e)));
-  }, []);
+  }, [qKey]);
 
   if (error) return <div className="p-6 text-red-600">Usage error: {error}</div>;
   if (!data) return <div className="p-6">Loading usage…</div>;
@@ -106,4 +123,3 @@ function TableSeries({rows}:{rows:DailyPoint[]}) {
     </table>
   );
 }
-
