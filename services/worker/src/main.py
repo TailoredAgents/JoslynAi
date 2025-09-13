@@ -36,6 +36,13 @@ def run():
         kind = task.get("kind")
         try:
             if kind == "ingest_pdf":
+                # update job status
+                try:
+                    import requests
+                    if task.get("job_id") and os.getenv("API_URL"):
+                        requests.patch(f"{os.getenv('API_URL')}/jobs/{task['job_id']}", json={"status":"processing"}, timeout=10)
+                except Exception as e:
+                    print("[JOB] status update failed:", e)
                 task = process_pdf(task)
                 # classify
                 filename = task.get("filename", "")
@@ -55,6 +62,12 @@ def run():
                     print("[WORKER] update doc_tags failed:", e)
 
                 embed_and_store(task)
+                try:
+                    import requests
+                    if task.get("job_id") and os.getenv("API_URL"):
+                        requests.patch(f"{os.getenv('API_URL')}/jobs/{task['job_id']}", json={"status":"done"}, timeout=10)
+                except Exception as e:
+                    print("[JOB] status done failed:", e)
                 # If document is an EOB, run extraction
                 try:
                     db_url = os.getenv("DATABASE_URL")

@@ -28,6 +28,11 @@ import billingUi from "./routes/billing-ui";
 import invitesRoutes from "./routes/invites";
 import docUrlRoutes from "./routes/doc_urls";
 import rbac from "./mw/rbac";
+import auth from "./mw/auth";
+import childrenRoutes from "./routes/children";
+import jobsRoutes from "./routes/jobs";
+import spansRoutes from "./routes/spans";
+import eventsRoutes from "./routes/events";
 
 const app = Fastify({
   logger: {
@@ -49,6 +54,7 @@ await app.register(rateLimit, {
     (req.headers["x-org-id"] as string) || (req.user?.org_id as string) || (req as any).orgId || req.ip,
 });
 await app.register(redact);
+await app.register(auth);
 await app.register(rbac);
 
 // Simple auth hook: parse JWT if present; set org_id for RLS context
@@ -91,6 +97,10 @@ await app.register(billingRoutes);
 await app.register(billingUi);
 await app.register(invitesRoutes);
 await app.register(docUrlRoutes);
+await app.register(childrenRoutes);
+await app.register(jobsRoutes);
+await app.register(spansRoutes);
+await app.register(eventsRoutes);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));

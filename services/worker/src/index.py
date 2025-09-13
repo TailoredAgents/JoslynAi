@@ -60,7 +60,8 @@ def embed_and_store(task: dict):
                 c = f"[Summary] {summary}\n" + c
                 first = False
             chunks.append(c)
-            meta.append({"page": p["page"]})
+            # bbox/page dims unknown at this stage; store None
+            meta.append({"page": p["page"], "bbox": None, "page_width": None, "page_height": None})
 
     if not chunks:
         print("[INDEX] No text chunks to embed")
@@ -79,10 +80,10 @@ def embed_and_store(task: dict):
                 vec_lit = "ARRAY[" + ",".join(str(x) for x in vec) + "]::vector"
                 cur.execute(
                     f"""
-                    INSERT INTO doc_spans (document_id, page, bbox, text, embedding)
-                    VALUES (%s, %s, %s, %s, {vec_lit})
+                    INSERT INTO doc_spans (document_id, page, bbox, page_width, page_height, text, embedding)
+                    VALUES (%s, %s, %s, %s, %s, %s, {vec_lit})
                     """,
-                    (document_id, m["page"], None, text[:4000])
+                    (document_id, m["page"], m.get("bbox"), m.get("page_width"), m.get("page_height"), text[:4000])
                 )
         try:
             conn.execute("UPDATE documents SET processed_at = NOW() WHERE id=%s", (document_id,))

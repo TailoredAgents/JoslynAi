@@ -39,7 +39,9 @@ model DocSpan {
   id           String   @id @default(uuid()) @db.Uuid
   document_id  String   @db.Uuid
   page         Int
-  bbox         String?
+  bbox         Float[]  @db.DoublePrecision
+  page_width   Float?   @db.DoublePrecision
+  page_height  Float?   @db.DoublePrecision
   text         String
   created_at   DateTime @default(now())
 
@@ -241,4 +243,24 @@ model invites {
   token     String   @unique
   accepted_at DateTime?
   created_at DateTime @default(now())
+}
+
+model users {
+  id         String   @id @default(uuid()) @db.Uuid
+  email      String   @unique
+  name       String?
+  created_at DateTime @default(now())
+}
+
+model job_runs {
+  id           String   @id @default(uuid()) @db.Uuid
+  child_id     String
+  type         String
+  status       String
+  error_text   String?
+  payload_json Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([child_id, created_at])
 }
