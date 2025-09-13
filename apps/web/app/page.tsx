@@ -62,6 +62,7 @@ export default function HomePage() {
       <div className="space-x-3">
         <a className="underline" href="/documents/demo/brief">View Document Brief</a>
         <a className="underline" href="/letters/new">New Letter</a>
+        <a className="underline" href="/claims/demo">View Claim</a>
         <a className="underline" href="/about-my-child">About My Child</a>
       </div>
     </div>

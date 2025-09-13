@@ -57,3 +57,63 @@ model IepExtract {
 
   @@map("iep_extract")
 }
+
+// Phase 2 additions
+
+model timeline_rules {
+  id            String   @id @default(uuid()) @db.Uuid
+  jurisdiction  String
+  kind          String
+  delta_days    Int
+  description   String?
+  source_url    String?
+  active        Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([jurisdiction, kind])
+  @@unique([jurisdiction, kind])
+}
+
+model deadlines {
+  id            String   @id @default(uuid()) @db.Uuid
+  child_id      String
+  kind          String
+  base_date     DateTime
+  due_date      DateTime
+  jurisdiction  String
+  source_doc_id String?
+  created_at    DateTime @default(now())
+}
+
+model letters {
+  id          String   @id @default(uuid()) @db.Uuid
+  child_id    String
+  kind        String
+  status      String   @default("draft")
+  draft_json  Json
+  pdf_uri     String?
+  sent_via    String?
+  sent_at     DateTime?
+  created_at  DateTime @default(now())
+}
+
+model claims {
+  id                   String   @id @default(uuid()) @db.Uuid
+  child_id             String
+  service_date         String?
+  provider             String?
+  amounts_json         Json?
+  status               String   @default("open")
+  linked_document_ids  Json?
+  created_at           DateTime @default(now())
+}
+
+model eobs {
+  id             String   @id @default(uuid()) @db.Uuid
+  claim_id       String
+  document_id    String
+  parsed_json    Json?
+  explanation_text String?
+  created_at     DateTime @default(now())
+}

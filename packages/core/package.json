@@ -12,6 +12,7 @@
     },
     "./llm/openai": "./dist/llm/openai.js",
     "./rag/retriever": "./dist/rag/retriever.js",
+    "./smart_attachments/*": "./dist/smart_attachments/*.js",
     "./schemas/*": "./schemas/*",
     "./prompts/*": "./prompts/*"
     }

@@ -6,7 +6,11 @@ import documentsRoutes from "./routes/documents";
 import askRoutes from "./routes/ask";
 import extractRoutes from "./routes/extract";
 import briefRoutes from "./routes/brief";
+import eobRoutes from "./routes/eob";
 import { ensureBucket } from "./lib/s3-init";
+import timelineTool from "./tools/timeline";
+import letterTool from "./tools/letter";
+import smartAttachments from "./tools/smart-attachments";
 
 const app = Fastify({
   logger: {
@@ -44,6 +48,10 @@ await app.register(documentsRoutes);
 await app.register(askRoutes);
 await app.register(extractRoutes);
 await app.register(briefRoutes);
+await app.register(eobRoutes);
+await app.register(timelineTool);
+await app.register(letterTool);
+await app.register(smartAttachments);
 
 // Tool endpoints (stubs)
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));

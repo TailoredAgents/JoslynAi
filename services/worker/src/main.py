@@ -3,6 +3,7 @@ import redis
 from src.ocr import process_pdf
 from src.index import embed_and_store
 from src.extract import extract_iep, extract_eob
+import psycopg
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379")
@@ -30,6 +31,15 @@ def run():
             if kind == "ingest_pdf":
                 task = process_pdf(task)
                 embed_and_store(task)
+                # If document is an EOB, run extraction
+                try:
+                    db_url = os.getenv("DATABASE_URL")
+                    with psycopg.connect(db_url) as conn:
+                        row = conn.execute("SELECT type FROM documents WHERE id=%s", (task.get("document_id"),)).fetchone()
+                        if row and isinstance(row[0], str) and 'eob' in row[0].lower():
+                            extract_eob(task)
+                except Exception as e:
+                    print("[WORKER] eob auto-extract check failed:", e)
             elif kind == "extract_iep":
                 extract_iep(task)
             elif kind == "extract_eob":
@@ -61,4 +71,3 @@ def start_health_server():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     print(f"Health server listening on :{port}")
-

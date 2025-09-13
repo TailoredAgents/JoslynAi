@@ -57,6 +57,12 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_FROM
+        value: no-reply@iep-ally.app
 
   - type: private_service
     name: iep-ally-worker
@@ -100,4 +106,3 @@ databases:
 redis:
   - name: iep-ally-redis
     plan: starter
-
