@@ -1,7 +1,8 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "node:stream";
 
-const s3 = new S3Client({
+export const s3 = new S3Client({
   endpoint: process.env.S3_ENDPOINT,
   region: "auto",
   forcePathStyle: true,
@@ -10,14 +11,14 @@ const s3 = new S3Client({
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
   },
 });
+const Bucket = process.env.S3_BUCKET!;
 
 export async function putObject(key: string, body: Buffer | Readable, contentType: string) {
-  await s3.send(new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET!,
-    Key: key,
-    Body: body as any,
-    ContentType: contentType,
-  }));
+  await s3.send(new PutObjectCommand({ Bucket, Key: key, Body: body as any, ContentType: contentType }));
   return { key };
 }
 
+export async function signedGetUrl(key: string, ttlSec = 900) {
+  const cmd = new GetObjectCommand({ Bucket, Key: key });
+  return await getSignedUrl(s3, cmd, { expiresIn: ttlSec });
+}

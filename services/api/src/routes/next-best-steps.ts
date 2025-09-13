@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
+import crypto from "node:crypto";
 
 export default async function routes(app: FastifyInstance) {
   app.get("/next-best-steps", async (req, reply) => {
@@ -20,14 +21,24 @@ export default async function routes(app: FastifyInstance) {
     const soon = await (prisma as any).deadlines.findMany({ where: { child_id, due_date: { lte: new Date(now + 14*86400000), gte: new Date(now) } } });
     for (const d of soon) {
       const payload = { deadline_id: d.id, due_date: d.due_date, ics: `/deadlines/${d.id}/ics` };
-      const row = await (prisma as any).next_best_steps.create({ data: { child_id, kind: "deadline_upcoming", payload_json: payload, suggested_at: new Date(), expires_at: new Date(now + 14*86400000) } });
+      const key = crypto.createHash('sha1').update(`${child_id}:deadline_upcoming:${JSON.stringify({deadline_id:d.id})}`).digest('hex');
+      const row = await (prisma as any).next_best_steps.upsert({
+        where: { child_id_kind_dedupe_key: { child_id, kind: "deadline_upcoming", dedupe_key: key } } as any,
+        create: { child_id, kind: "deadline_upcoming", payload_json: payload, dedupe_key: key, suggested_at: new Date(), expires_at: new Date(now + 14*86400000) },
+        update: { payload_json: payload, expires_at: new Date(now + 14*86400000) }
+      });
       created.push(row);
     }
     // (2) EOB denial and no appeal letter sent
     const eob = await (prisma as any).eobs.findMany({});
     if (eob.length) {
       const payload = { action: "appeal_packet" };
-      const row = await (prisma as any).next_best_steps.create({ data: { child_id, kind: "appeal_recommended", payload_json: payload, suggested_at: new Date() } });
+      const key = crypto.createHash('sha1').update(`${child_id}:appeal_recommended:${JSON.stringify(payload)}`).digest('hex');
+      const row = await (prisma as any).next_best_steps.upsert({
+        where: { child_id_kind_dedupe_key: { child_id, kind: "appeal_recommended", dedupe_key: key } } as any,
+        create: { child_id, kind: "appeal_recommended", payload_json: payload, dedupe_key: key, suggested_at: new Date() },
+        update: { payload_json: payload }
+      });
       created.push(row);
     }
     return reply.send(created);

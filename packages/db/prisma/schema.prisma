@@ -129,10 +129,13 @@ model next_best_steps {
   child_id      String
   kind          String
   payload_json  Json
+  dedupe_key    String?
   suggested_at  DateTime @default(now())
   expires_at    DateTime?
   accepted_at   DateTime?
   dismissed_at  DateTime?
+
+  @@unique([child_id, kind, dedupe_key])
 }
 
 model notifications {

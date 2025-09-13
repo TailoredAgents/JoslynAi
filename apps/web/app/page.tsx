@@ -60,7 +60,11 @@ export default function HomePage() {
                 <div className="font-medium">Citations:</div>
                 <ul className="list-disc ml-5 text-slate-600">
                   {citations.slice(0, 2).map((c, i) => (
-                    <li key={i}>{c.doc_name || c.document_id} p.{c.page}</li>
+                    <li key={i}>
+                      {c.doc_name || c.document_id} p.{c.page}
+                      {" "}
+                      <a className="text-blue-600 underline" href={`/documents/${c.document_id}/view?page=${c.page}&q=${encodeURIComponent(c.quote || "")}`} target="_blank" rel="noreferrer">Open</a>
+                    </li>
                   ))}
                 </ul>
               </div>

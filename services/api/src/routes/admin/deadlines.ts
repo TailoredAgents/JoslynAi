@@ -35,5 +35,23 @@ export default async function routes(app: FastifyInstance) {
     const decorated = rows.map((r: any) => ({ ...r, child_name: nameById.get(r.child_id) || null }));
     return reply.send(decorated);
   });
-}
 
+  // Create deadline (guarded) is already in admin/rules.ts for compute; support simple direct create too
+  app.post("/admin/deadlines", async (req, reply) => {
+    const { child_id, kind, base_date, jurisdiction = "US-*" } = (req.body as any);
+    const org_id = (req as any).user?.org_id || "demo-org";
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function') {
+      await (req as any).requireRole(org_id, ["owner"]);
+    }
+    const rule = await (prisma as any).timeline_rules.findFirst({
+      where: { kind, OR: [{ jurisdiction }, { jurisdiction: "US-*" }], active: true },
+      orderBy: [{ jurisdiction: "desc" as const }]
+    });
+    if (!rule) return reply.status(400).send({ error: "No rule found" });
+    const dayjs = (await import("dayjs")).default;
+    const due = dayjs(base_date).add(rule.delta_days, "day").toDate();
+    const dl = await (prisma as any).deadlines.create({ data: { child_id, kind, base_date: new Date(base_date), due_date: due, jurisdiction } });
+    return reply.send(dl);
+  });
+}

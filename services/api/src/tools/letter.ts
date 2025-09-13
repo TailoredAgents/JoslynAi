@@ -77,6 +77,11 @@ export default async function routes(app: FastifyInstance) {
   app.post("/tools/letter/send", async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements");
     await requireEntitlement(req, reply, "letters.send");
+    const org_id = (req as any).user?.org_id || "demo-org";
+    // @ts-ignore requireRole from RBAC
+    if (typeof (req as any).requireRole === 'function') {
+      await (req as any).requireRole(org_id, ["owner","parent"]);
+    }
     const { letter_id, to, subject } = (req.body as any);
     const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
     if (!letter?.pdf_uri) return reply.status(400).send({ error: "render first" });
