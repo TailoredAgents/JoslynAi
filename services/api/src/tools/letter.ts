@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import Mustache from "mustache";
 import { prisma } from "../lib/db";
 import { OpenAI } from "openai";
+import { safeResponsesCreate } from "../lib/openai";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing";
 
 const TPL_DIR = path.join(process.cwd(), "packages/core/templates/letters");
@@ -24,7 +25,7 @@ export default async function routes(app: FastifyInstance) {
     }
     const draft = Mustache.render(body, merge_fields);
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const resp = await (openai as any).responses.create({
+    const resp = await safeResponsesCreate({
       model: process.env.OPENAI_MODEL_MINI || "gpt-5-mini",
       input: [
         { role: "system", content: "You are a helpful assistant. Make the letter clear, concise, and polite." },

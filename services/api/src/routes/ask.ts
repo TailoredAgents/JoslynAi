@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing";
 import { OpenAI } from "openai";
+import { safeResponsesCreate } from "../lib/openai";
 import fs from "node:fs";
 import path from "node:path";
 import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
@@ -53,7 +54,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     const excerptBlocks = spans.map((s: any, i: number) => `#${i + 1} [${s.doc_name} p.${s.page}] ${s.text.slice(0, 600)}`).join("\n---\n");
 
-    const resp = await (openai as any).responses.create({
+    const resp = await safeResponsesCreate({
       model: process.env.OPENAI_MODEL_MINI || "gpt-5-mini",
       input: [
         { role: "system", content: askSystem },

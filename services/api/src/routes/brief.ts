@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
 import { OpenAI } from "openai";
+import { safeResponsesCreate } from "../lib/openai";
 import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
 
 const system = `You explain an IEP in plain, parent-friendly language at grade 7 level.
@@ -42,7 +43,7 @@ export default async function routes(fastify: FastifyInstance) {
       if (!spans.length) return reply.send({ overview: "I don’t see enough content in your document yet.", citations: [] });
 
       const blocks = spans.map((s: any, i: number) => `#${i+1} [${s.doc_name} p.${s.page}] ${s.text.slice(0, 700)}`).join("\n---\n");
-      const resp = await (openai as any).responses.create({
+      const resp = await safeResponsesCreate({
         model: process.env.OPENAI_MODEL_MINI || "gpt-5-mini",
         input: [
           { role: "system", content: system },
@@ -58,4 +59,3 @@ export default async function routes(fastify: FastifyInstance) {
     }
   );
 }
-

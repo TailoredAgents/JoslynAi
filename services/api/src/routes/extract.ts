@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing";
 import { OpenAI } from "openai";
+import { safeResponsesCreate } from "../lib/openai";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -36,7 +37,7 @@ export default async function routes(fastify: FastifyInstance) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const text = spansData.map((s) => `Page ${s.page}:\n${s.text}`).join("\n\n");
 
-    const resp = await (openai as any).responses.create({
+    const resp = await safeResponsesCreate({
       model: process.env.OPENAI_MODEL_PRIMARY || "gpt-5",
       input: [
         { role: "system", content: iepSystem },

@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db";
 import { OpenAI } from "openai";
+import { safeResponsesCreate } from "../lib/openai";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { claimId: string } }>("/claims/:claimId/explain", async (req, reply) => {
@@ -11,7 +12,7 @@ export default async function routes(app: FastifyInstance) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const text = JSON.stringify({ amounts, denial_reason: eob?.parsed_json?.denial_reason });
 
-    const resp = await (openai as any).responses.create({
+    const resp = await safeResponsesCreate({
       model: process.env.OPENAI_MODEL_MINI || "gpt-5-mini",
       input: [
         { role: "system", content: "Explain this EOB in plain, parent-friendly English." },
