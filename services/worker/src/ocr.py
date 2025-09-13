@@ -50,3 +50,4 @@ def process_pdf(task: dict) -> dict:
 
         task["pages"] = pages
         return task
+

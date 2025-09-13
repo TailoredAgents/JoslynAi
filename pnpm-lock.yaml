@@ -112,6 +112,9 @@ importers:
       '@fastify/multipart':
         specifier: ^9.2.1
         version: 9.2.1
+      '@fastify/rate-limit':
+        specifier: ^10.1.0
+        version: 10.3.0
       '@prisma/client':
         specifier: 5.18.0
         version: 5.18.0(prisma@5.18.0)
@@ -1296,6 +1299,9 @@ packages:
 
   '@fastify/proxy-addr@5.0.0':
     resolution: {integrity: sha512-37qVVA1qZ5sgH7KpHkkC4z9SK6StIsIcOmpjvMPXNb3vx2GQxhZocogVYbr2PbbeLCQxYIPDok307xEvRZOzGA==}
+
+  '@fastify/rate-limit@10.3.0':
+    resolution: {integrity: sha512-eIGkG9XKQs0nyynatApA3EVrojHOuq4l6fhB4eeCk4PIOeadvOJz9/4w3vGI44Go17uaXOWEcPkaD8kuKm7g6Q==}
 
   '@formatjs/ecma402-abstract@2.3.4':
     resolution: {integrity: sha512-qrycXDeaORzIqNhBOx0btnhpD1c+/qFIHAN9znofuMJX6QBwtbrmlpWfD4oiUUD2vJUOIYFA/gYtg2KAMGG7sA==}
@@ -7130,6 +7136,12 @@ snapshots:
     dependencies:
       '@fastify/forwarded': 3.0.0
       ipaddr.js: 2.2.0
+
+  '@fastify/rate-limit@10.3.0':
+    dependencies:
+      '@lukeed/ms': 2.0.2
+      fastify-plugin: 5.0.1
+      toad-cache: 3.7.0
 
   '@formatjs/ecma402-abstract@2.3.4':
     dependencies:

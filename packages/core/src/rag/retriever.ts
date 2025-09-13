@@ -20,8 +20,8 @@ function rrfFuse(lex: Span[], vec: Span[], k = 60, top = 12): Span[] {
 
 export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12) {
   const lex = await prisma.$queryRawUnsafe(
-    `SELECT ds.id, ds.document_id, d.type as doc_name, ds.page, ds.text,
-            ts_rank_cd(to_tsvector('english', ds.text), plainto_tsquery('english', $1)) AS "scoreLex"
+    `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
+            ts_rank_cd(ds.tsv, plainto_tsquery('english', $1)) AS "scoreLex"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id
      WHERE d.child_id = $2
@@ -34,7 +34,7 @@ export async function retrieveForAsk(prisma: any, openai: any, childId: string, 
   const emb = await openai.embeddings.create({ model: process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-small", input: query });
   const vecStr = `ARRAY[${emb.data[0].embedding.join(",")}]::vector`;
   const vec = await prisma.$queryRawUnsafe(
-    `SELECT ds.id, ds.document_id, d.type as doc_name, ds.page, ds.text,
+    `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
             1 - (ds.embedding <=> ${vecStr}) AS "scoreVec"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id

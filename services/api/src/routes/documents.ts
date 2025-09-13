@@ -41,6 +41,7 @@ export default async function routes(fastify: FastifyInstance) {
           storage_uri: key,
           sha256,
           doc_tags: [],
+          original_name: data.filename,
         },
         select: { id: true },
       });
@@ -49,14 +50,15 @@ export default async function routes(fastify: FastifyInstance) {
 
     if (!documentId) {
       const row = await prisma.$queryRawUnsafe(
-        `INSERT INTO documents (child_id, type, storage_uri, sha256, doc_tags)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO documents (child_id, type, storage_uri, sha256, doc_tags, original_name)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
         childId,
         guessDocType(data.filename),
         key,
         sha256,
-        JSON.stringify([])
+        JSON.stringify([]),
+        data.filename
       ) as any as { id: string }[];
       documentId = (row as any)[0]?.id;
     }

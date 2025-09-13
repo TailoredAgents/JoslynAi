@@ -1,8 +1,8 @@
 import os, json, threading
 import redis
-from worker.ocr import process_pdf
-from worker.index import embed_and_store
-from worker.extract import extract_iep, extract_eob
+from src.ocr import process_pdf
+from src.index import embed_and_store
+from src.extract import extract_iep, extract_eob
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379")
@@ -61,3 +61,4 @@ def start_health_server():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     print(f"Health server listening on :{port}")
+

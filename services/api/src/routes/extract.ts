@@ -48,13 +48,26 @@ export default async function routes(fastify: FastifyInstance) {
     const data = parsed ? JSON.parse(parsed) : null;
     if (!data) return reply.status(400).send({ error: "Extraction failed" });
 
-    // Upsert minimal columns into iep_extract
+    // Upsert structured columns into iep_extract
     await prisma.$executeRawUnsafe(
-      `INSERT INTO iep_extract (document_id, data)
-       VALUES ($1, $2)
-       ON CONFLICT (document_id) DO UPDATE SET data = EXCLUDED.data`,
+      `INSERT INTO iep_extract (document_id, services_json, goals_json, accommodations_json, placement, start_date, end_date, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (document_id) DO UPDATE SET
+         services_json = EXCLUDED.services_json,
+         goals_json = EXCLUDED.goals_json,
+         accommodations_json = EXCLUDED.accommodations_json,
+         placement = EXCLUDED.placement,
+         start_date = EXCLUDED.start_date,
+         end_date = EXCLUDED.end_date,
+         notes = EXCLUDED.notes`,
       documentId,
-      JSON.stringify(data)
+      JSON.stringify(data.services || []),
+      JSON.stringify(data.goals || []),
+      JSON.stringify(data.accommodations || []),
+      data.placement || null,
+      data?.dates?.start ? new Date(data.dates.start) : null,
+      data?.dates?.end ? new Date(data.dates.end) : null,
+      null
     );
 
     return reply.send({ ok: true });

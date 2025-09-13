@@ -26,6 +26,7 @@ model Documents {
   storage_uri String
   sha256      String
   doc_tags    Json
+  original_name String?
   created_at  DateTime @default(now())
 
   @@map("documents")
@@ -43,10 +44,16 @@ model DocSpan {
 }
 
 model IepExtract {
-  id           String   @id @default(uuid()) @db.Uuid
-  document_id  String   @unique @db.Uuid
-  data         Json
-  created_at   DateTime @default(now())
+  id                   String   @id @default(uuid()) @db.Uuid
+  document_id          String   @unique @db.Uuid
+  services_json        Json
+  goals_json           Json
+  accommodations_json  Json
+  placement            String?
+  start_date           DateTime?
+  end_date             DateTime?
+  notes                String?
+  created_at           DateTime @default(now())
 
   @@map("iep_extract")
 }

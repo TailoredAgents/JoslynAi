@@ -1,5 +1,4 @@
 import os
-import math
 import psycopg
 from openai import OpenAI
 
@@ -16,15 +15,40 @@ def _chunk(text: str, max_chars: int = 1800):
         start = end
     return [p for p in parts if p.strip()]
 
+def _summarize(text: str, client: OpenAI) -> str:
+    model = os.getenv("OPENAI_MODEL_NANO", "gpt-5-nano")
+    prompt = (text or "").strip()[:2000]
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "Summarize in 1-2 short sentences (<=200 chars)."},
+                {"role": "user", "content": prompt },
+            ],
+            max_tokens=80,
+        )
+        return (resp.choices[0].message.content or "").strip()[:200]
+    except Exception as e:
+        print("[INDEX] summarize failed:", e)
+        return ""
+
 def embed_and_store(task: dict):
     document_id = task["document_id"]
     pages = task.get("pages") or []
     print(f"[INDEX] Embedding and storing spans for document_id={document_id}")
 
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
     chunks = []
     meta = []
     for p in pages:
-        for c in _chunk(p.get("text") or ""):
+        text = p.get("text") or ""
+        summary = _summarize(text, client)
+        first = True
+        for c in _chunk(text):
+            if first and summary:
+                c = f"[Summary] {summary}\n" + c
+                first = False
             chunks.append(c)
             meta.append({"page": p["page"]})
 
@@ -32,7 +56,6 @@ def embed_and_store(task: dict):
         print("[INDEX] No text chunks to embed")
         return
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     resp = client.embeddings.create(model=EMBED_MODEL, input=chunks)
     vectors = [d.embedding for d in resp.data]
 
@@ -46,9 +69,10 @@ def embed_and_store(task: dict):
                 vec_lit = "ARRAY[" + ",".join(str(x) for x in vec) + "]::vector"
                 cur.execute(
                     f"""
-                    INSERT INTO doc_spans (document_id, page, bbox, text, embedding, tsv)
-                    VALUES (%s, %s, %s, %s, {vec_lit}, to_tsvector('english', %s))
+                    INSERT INTO doc_spans (document_id, page, bbox, text, embedding)
+                    VALUES (%s, %s, %s, %s, {vec_lit})
                     """,
-                    (document_id, m["page"], None, text[:4000], text[:4000])
+                    (document_id, m["page"], None, text[:4000])
                 )
         conn.commit()
+
