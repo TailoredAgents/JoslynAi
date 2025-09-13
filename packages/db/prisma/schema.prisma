@@ -121,6 +121,52 @@ model eobs {
   @@unique([document_id])
 }
 
+model next_best_steps {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String?
+  child_id      String
+  kind          String
+  payload_json  Json
+  suggested_at  DateTime @default(now())
+  expires_at    DateTime?
+  accepted_at   DateTime?
+  dismissed_at  DateTime?
+}
+
+model notifications {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String?
+  user_id       String?
+  kind          String
+  payload_json  Json
+  send_at       DateTime
+  sent_at       DateTime?
+  channel       String   @default("email")
+  created_at    DateTime @default(now())
+}
+
+model agent_runs {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String?
+  user_id       String?
+  child_id      String?
+  intent        String
+  inputs_json   Json
+  outputs_json  Json
+  tokens        Int      @default(0)
+  cost_cents    Int      @default(0)
+  route         String?
+  created_at    DateTime @default(now())
+}
+
+model entitlements {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String   @unique
+  plan          String
+  features_json Json
+  created_at    DateTime @default(now())
+}
+
 model glossaries {
   id         String   @id @default(uuid()) @db.Uuid
   org_id     String

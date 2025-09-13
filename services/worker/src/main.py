@@ -4,6 +4,7 @@ from src.ocr import process_pdf
 from src.index import embed_and_store
 from src.extract import extract_iep, extract_eob
 from src.classify import heuristics, classify_text
+from src.notify import tick as notify_tick
 import psycopg
 import psycopg
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -20,6 +21,10 @@ def run():
     while True:
         job = r.blpop("jobs", timeout=5)
         if not job:
+            try:
+                notify_tick()
+            except Exception:
+                pass
             continue
         _, payload = job
         print("Got job:")

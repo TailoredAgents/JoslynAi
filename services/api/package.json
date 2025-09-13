@@ -26,6 +26,7 @@
     "nodemailer": "^6.9.14",
     "ics": "^3.8.1",
     "qrcode": "^1.5.4",
+    "@fastify/websocket": "^10.0.1",
     "@prisma/client": "5.18.0",
     "pino": "^9.3.2",
     "undici": "^6.19.8"

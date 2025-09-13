@@ -45,6 +45,8 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post("/tools/letter/render", async (req, reply) => {
+    const { requireEntitlement } = await import("../mw/entitlements");
+    await requireEntitlement(req, reply, "letters.render");
     const { letter_id } = (req.body as any);
     const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
     if (!letter) return reply.status(404).send({ error: "letter not found" });
@@ -66,6 +68,8 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post("/tools/letter/send", async (req, reply) => {
+    const { requireEntitlement } = await import("../mw/entitlements");
+    await requireEntitlement(req, reply, "letters.send");
     const { letter_id, to, subject } = (req.body as any);
     const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
     if (!letter?.pdf_uri) return reply.status(400).send({ error: "render first" });

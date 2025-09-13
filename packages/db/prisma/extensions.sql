@@ -48,3 +48,8 @@ VALUES
   (gen_random_uuid(), 'US-*', 'iep_annual_review', 365, 'Annual IEP review due', NULL, true),
   (gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true)
 ON CONFLICT (jurisdiction, kind) DO NOTHING;
+
+-- Seed entitlements for demo org (dev)
+INSERT INTO entitlements (id, org_id, plan, features_json)
+VALUES (gen_random_uuid(), 'demo-org', 'pro', '{"ask":true,"smart_attachments":true,"letters":{"render":true,"send":true},"brief":true}')
+ON CONFLICT (org_id) DO NOTHING;

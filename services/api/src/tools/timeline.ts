@@ -17,6 +17,12 @@ export default async function routes(app: FastifyInstance) {
     });
     // audit event
     await (prisma as any).events.create({ data: { org_id: (req as any).orgId || null, type: "deadline_create", payload_json: { child_id, kind, base_date, due_date: due } } });
+    // schedule notifications (7d and 2d before)
+    const schedule = [7, 2];
+    for (const d of schedule) {
+      const send_at = new Date(due.getTime() - d * 86400000);
+      await (prisma as any).notifications.create({ data: { org_id: (req as any).orgId || null, user_id: null, kind: "deadline_reminder", payload_json: { deadline_id: dl.id, kind, due_date: due }, send_at } });
+    }
     return reply.send({ deadline_id: dl.id, due_date: dl.due_date, description: rule.description, source_url: rule.source_url });
   });
 }

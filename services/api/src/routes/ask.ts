@@ -41,6 +41,8 @@ const AskAnswerSchema = {
 
 export default async function routes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string }, Body: { query: string, lang?: string } }>("/children/:id/ask", async (req, reply) => {
+    const { requireEntitlement } = await import("../mw/entitlements");
+    await requireEntitlement(req, reply, "ask");
     const { query, lang = "en" } = req.body;
     const childId = req.params.id;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

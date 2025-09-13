@@ -6,6 +6,8 @@ import { OpenAI } from "openai";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/smart-attachments/suggest", async (req, reply) => {
+    const { requireEntitlement } = await import("../mw/entitlements");
+    await requireEntitlement(req, reply, "smart_attachments");
     const { child_id, denial_reason, limit = 5 } = (req.body as any);
     const rules = (SMART_ATTACHMENT_MAP as any)[denial_reason] || [];
     if (!rules.length) return reply.send({ suggestions: [] });
