@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { encodeQjson } from "../lib/qjson";
 import en from "../i18n/messages/en.json";
 import es from "../i18n/messages/es.json";
 
@@ -53,23 +55,45 @@ export default function HomePage() {
           <button className="bg-sky-500 text-white rounded px-3 py-2" onClick={ask} disabled={loading}>{loading ? "Asking..." : "Ask"}</button>
         </div>
         {answer && (
-          <div className="mt-3 text-sm text-slate-700 space-y-2">
-            <div>Answer: {answer}</div>
-            {citations.length > 0 && (
-              <div>
-                <div className="font-medium">Citations:</div>
-                <ul className="list-disc ml-5 text-slate-600">
-                  {citations.slice(0, 2).map((c, i) => (
-                    <li key={i}>
-                      {c.doc_name || c.document_id} p.{c.page}
-                      {" "}
-                      <a className="text-blue-600 underline" href={`/documents/${c.document_id}/view?page=${c.page}&q=${encodeURIComponent(c.quote || "")}`} target="_blank" rel="noreferrer">Open</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <section className="mt-6 space-y-4">
+            <h2 className="font-medium text-lg">Answer</h2>
+            <p className="text-gray-800 whitespace-pre-wrap">{answer}</p>
+            <div className="mt-4 space-y-3">
+              <h3 className="font-medium">Citations</h3>
+              {(() => {
+                const byDoc = new Map<string, { doc_name: string; cites: { page: number; quote: string }[] }>();
+                for (const c of citations || []) {
+                  const id = c.document_id as string;
+                  const entry = byDoc.get(id) ?? { doc_name: c.doc_name || "Document", cites: [] as { page: number; quote: string }[] };
+                  if (!entry.cites.some(x => x.page === Number(c.page) && x.quote === (c.quote || ""))) {
+                    entry.cites.push({ page: Number(c.page), quote: c.quote || "" });
+                  }
+                  byDoc.set(id, entry);
+                }
+                if (byDoc.size === 0) return <div className="text-sm text-gray-500">No citations found.</div>;
+                return [...byDoc.entries()].map(([docId, { doc_name, cites }]) => {
+                  const qjson = encodeQjson(cites, 12);
+                  return (
+                    <div key={docId} className="border rounded p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold">{doc_name}</div>
+                        <Link className="text-sm text-blue-600 underline" href={`/documents/${docId}/view?qjson=${encodeURIComponent(qjson)}`} target="_blank">Open all highlights ({cites.length})</Link>
+                      </div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        {cites.slice(0, 12).map((c, i) => (
+                          <li key={`${c.page}-${i}`}>
+                            <span className="text-gray-700">p.{c.page} — </span>
+                            <span className="text-gray-600">{c.quote.slice(0, 140)}{c.quote.length > 140 ? "…" : ""}</span>{" "}
+                            <Link className="text-blue-600 underline" href={`/documents/${docId}/view?page=${c.page}&q=${encodeURIComponent(c.quote)}`} target="_blank">Open</Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </section>
         )}
       </div>
 
