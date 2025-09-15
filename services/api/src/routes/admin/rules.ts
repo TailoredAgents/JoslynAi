@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../../lib/db";
+import { prisma } from "../../lib/db.js";
 import dayjs from "dayjs";
 
 export default async function routes(app: FastifyInstance) {
@@ -31,7 +31,7 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
-  app.post("/admin/deadlines", async (req, reply) => {
+  app.post("/admin/rules/apply", async (req, reply) => {
     const org_id = (req as any).user?.org_id || "demo-org";
     // @ts-ignore
     if (typeof (req as any).requireRole === 'function') {
@@ -49,3 +49,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(dl);
   });
 }
+
+

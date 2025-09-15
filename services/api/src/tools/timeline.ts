@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import dayjs from "dayjs";
 
 export default async function routes(app: FastifyInstance) {
@@ -26,3 +26,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ deadline_id: dl.id, due_date: dl.due_date, description: rule.description, source_url: rule.source_url });
   });
 }
+

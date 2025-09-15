@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
-import { MODEL_RATES, computeCostCents } from "../lib/pricing";
+import { prisma } from "../lib/db.js";
+import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 import { OpenAI } from "openai";
-import { safeResponsesCreate } from "../lib/openai";
+import { safeResponsesCreate } from "../lib/openai.js";
 import fs from "node:fs";
 import path from "node:path";
 import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
@@ -77,3 +77,4 @@ export default async function routes(fastify: FastifyInstance) {
     return reply.send({ answer: parsed.answer, citations: cit });
   });
 }
+

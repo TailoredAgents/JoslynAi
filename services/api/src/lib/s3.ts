@@ -22,3 +22,4 @@ export async function signedGetUrl(key: string, ttlSec = 900) {
   const cmd = new GetObjectCommand({ Bucket, Key: key });
   return await getSignedUrl(s3, cmd, { expiresIn: ttlSec });
 }
+

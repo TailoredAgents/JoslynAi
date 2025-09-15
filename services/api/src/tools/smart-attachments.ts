@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import { SMART_ATTACHMENT_MAP } from "@iep-ally/core/smart_attachments/map";
 import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
 import { OpenAI } from "openai";
@@ -38,3 +38,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ suggestions });
   });
 }
+

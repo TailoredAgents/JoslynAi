@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
-import { safeResponsesCreate } from "../lib/openai";
+import { safeResponsesCreate } from "../lib/openai.js";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { claimId: string } }>("/claims/:claimId/explain", async (req, reply) => {
@@ -23,3 +23,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ explanation: out, amounts, denial_reason: eob?.parsed_json?.denial_reason || null });
   });
 }
+

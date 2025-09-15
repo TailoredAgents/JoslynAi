@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import QRCode from "qrcode";
 
@@ -83,4 +83,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(prof?.profile_json || {});
   });
 }
+
 

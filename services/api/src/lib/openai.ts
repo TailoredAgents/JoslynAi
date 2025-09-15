@@ -62,3 +62,4 @@ export async function safeResponsesCreate(opts: any) {
   maybeLogSanitized(opts.input, safeMsgs);
   return client.responses.create({ ...opts, input: safeMsgs });
 }
+

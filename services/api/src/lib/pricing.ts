@@ -12,3 +12,4 @@ export function computeCostCents(u: { model:string; input_tokens:number; output_
   const cached = (u.cached_tokens || 0) * (r.cached || 0);
   return Math.round((input + output + cached) * 100);
 }
+

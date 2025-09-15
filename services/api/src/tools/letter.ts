@@ -3,10 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import Mustache from "mustache";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
-import { safeResponsesCreate } from "../lib/openai";
-import { MODEL_RATES, computeCostCents } from "../lib/pricing";
+import { safeResponsesCreate } from "../lib/openai.js";
+import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 
 const TPL_DIR = path.join(process.cwd(), "packages/core/templates/letters");
 
@@ -109,3 +109,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 }
+

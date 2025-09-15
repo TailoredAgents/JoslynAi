@@ -39,7 +39,10 @@ model DocSpan {
   id           String   @id @default(uuid()) @db.Uuid
   document_id  String   @db.Uuid
   page         Int
-  bbox         String?
+  // Prefer numeric bbox: [x, y, w, h] in page coordinates
+  bbox         Float[] @default([])
+  page_width   Float?
+  page_height  Float?
   text         String
   created_at   DateTime @default(now())
 
@@ -241,4 +244,26 @@ model invites {
   token     String   @unique
   accepted_at DateTime?
   created_at DateTime @default(now())
+}
+
+// Phase 6 additions
+
+model users {
+  id         String   @id @default(uuid()) @db.Uuid
+  email      String   @unique
+  name       String?
+  created_at DateTime @default(now())
+}
+
+model job_runs {
+  id           String   @id @default(uuid()) @db.Uuid
+  child_id     String
+  type         String   // "upload" | "ocr" | "index" | "extract" | ... (current stage)
+  status       String   // "pending" | "processing" | "done" | "failed"
+  error_text   String?
+  payload_json Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([child_id, created_at])
 }

@@ -3,7 +3,7 @@ import { FastifyInstance } from "fastify";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import websocket from "@fastify/websocket";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   await (app as any).register(websocket as any);
@@ -22,3 +22,4 @@ export default async function routes(app: FastifyInstance) {
     });
   });
 }
+

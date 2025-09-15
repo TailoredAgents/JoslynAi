@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../../lib/db";
+import { prisma } from "../../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.addHook("onRequest", async (req, reply) => {
@@ -53,4 +53,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true, claim_id: claim.id, eob_id: e.id });
   });
 }
+
 

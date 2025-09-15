@@ -53,6 +53,7 @@ export default function NewLetter() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">New Letter</h2>
+      <div className="text-xs text-gray-500">Not legal or medical advice.</div>
       <select className="border rounded px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value)}>
         <option value="evaluation-request">Evaluation Request</option>
         <option value="records-request">Records Request</option>
@@ -74,4 +75,3 @@ export default function NewLetter() {
     </div>
   );
 }
-

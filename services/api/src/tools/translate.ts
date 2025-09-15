@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { OpenAI } from "openai";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 async function applyGlossary(org_id: string | undefined, text: string, target: string) {
   if (!org_id) return text;
@@ -55,4 +55,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ report });
   });
 }
+
 

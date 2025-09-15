@@ -43,10 +43,10 @@ BEFORE INSERT OR UPDATE ON doc_spans
 FOR EACH ROW EXECUTE FUNCTION doc_spans_tsv_update();
 
 -- Seed baseline timeline rules (idempotent via unique constraint on jurisdiction+kind)
-INSERT INTO timeline_rules (id, jurisdiction, kind, delta_days, description, source_url, active)
+INSERT INTO timeline_rules (id, jurisdiction, kind, delta_days, description, source_url, active, created_at, updated_at)
 VALUES
-  (gen_random_uuid(), 'US-*', 'iep_annual_review', 365, 'Annual IEP review due', NULL, true),
-  (gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true)
+  (gen_random_uuid(), 'US-*', 'iep_annual_review', 365, 'Annual IEP review due', NULL, true, now(), now()),
+  (gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true, now(), now())
 ON CONFLICT (jurisdiction, kind) DO NOTHING;
 
 -- Seed entitlements for demo org (dev)

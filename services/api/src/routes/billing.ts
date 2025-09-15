@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import Stripe from "stripe";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -45,4 +45,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ received: true });
   });
 }
+
 

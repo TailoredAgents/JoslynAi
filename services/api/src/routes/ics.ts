@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 import { createEvent } from "ics";
 
 export default async function routes(app: FastifyInstance) {
@@ -20,4 +20,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(event.value);
   });
 }
+
 

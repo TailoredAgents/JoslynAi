@@ -1,4 +1,4 @@
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export async function requireEntitlement(req: any, reply: any, feature: string) {
   const orgId = (req.orgId || req.headers["x-org-id"] || "demo-org") as string;
@@ -9,4 +9,5 @@ export async function requireEntitlement(req: any, reply: any, feature: string) 
     if (ok === false) return reply.code(402).send({ upgrade: true });
   } catch {}
 }
+
 

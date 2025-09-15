@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.get("/me/export", async (req, reply) => {
@@ -28,4 +28,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 }
+
 

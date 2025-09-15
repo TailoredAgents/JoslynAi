@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../../lib/db";
+import { prisma } from "../../lib/db.js";
 
 function parseDate(d?: string, def?: Date) {
   if (!d) return def;
@@ -94,3 +94,4 @@ export default async function routes(app: FastifyInstance) {
     });
   });
 }
+

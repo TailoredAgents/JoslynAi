@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/eligibility/screener", async (req, reply) => {
@@ -31,4 +31,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ pdf_uri: pdfKey });
   });
 }
+
 

@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/invites", async (req, reply) => {
@@ -22,4 +22,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 }
+
 

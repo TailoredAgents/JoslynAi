@@ -5,3 +5,4 @@ declare module "@iep-ally/core/rag/retriever" {
 declare module "@iep-ally/core/smart_attachments/map" {
   export const SMART_ATTACHMENT_MAP: any;
 }
+

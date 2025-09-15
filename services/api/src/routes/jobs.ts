@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db";
+import { prisma } from "../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/jobs/enqueue", async (req, reply) => {
@@ -26,4 +26,5 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(row);
   });
 }
+
 

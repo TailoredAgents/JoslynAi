@@ -2,32 +2,37 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import jwt from "@fastify/jwt";
-import documentsRoutes from "./routes/documents";
-import askRoutes from "./routes/ask";
-import extractRoutes from "./routes/extract";
-import briefRoutes from "./routes/brief";
-import eobRoutes from "./routes/eob";
-import { ensureBucket } from "./lib/s3-init";
-import timelineTool from "./tools/timeline";
-import letterTool from "./tools/letter";
-import smartAttachments from "./tools/smart-attachments";
-import adminDeadlines from "./routes/admin/deadlines";
-import internalEob from "./routes/internal/eob";
-import translateTools from "./tools/translate";
-import profileRoutes from "./routes/profile";
-import icsRoutes from "./routes/ics";
-import eligibilityRoutes from "./routes/eligibility";
-import adminRules from "./routes/admin/rules";
-import agentRoutes from "./routes/agent";
-import nbsRoutes from "./routes/next-best-steps";
-import adminUsage from "./routes/admin/usage";
-import redact from "./mw/redact";
-import dsrRoutes from "./routes/dsr";
-import billingRoutes from "./routes/billing";
-import billingUi from "./routes/billing-ui";
-import invitesRoutes from "./routes/invites";
-import docUrlRoutes from "./routes/doc_urls";
-import rbac from "./mw/rbac";
+import documentsRoutes from "./routes/documents.js";
+import childrenRoutes from "./routes/children.js";
+import askRoutes from "./routes/ask.js";
+import extractRoutes from "./routes/extract.js";
+import briefRoutes from "./routes/brief.js";
+import eobRoutes from "./routes/eob.js";
+import { ensureBucket } from "./lib/s3-init.js";
+import timelineTool from "./tools/timeline.js";
+import letterTool from "./tools/letter.js";
+import smartAttachments from "./tools/smart-attachments.js";
+import adminDeadlines from "./routes/admin/deadlines.js";
+import internalEob from "./routes/internal/eob.js";
+import translateTools from "./tools/translate.js";
+import profileRoutes from "./routes/profile.js";
+import icsRoutes from "./routes/ics.js";
+import eligibilityRoutes from "./routes/eligibility.js";
+import adminRules from "./routes/admin/rules.js";
+import agentRoutes from "./routes/agent.js";
+import nbsRoutes from "./routes/next-best-steps.js";
+import adminUsage from "./routes/admin/usage.js";
+import redact from "./mw/redact.js";
+import auth from "./mw/auth.js";
+import dsrRoutes from "./routes/dsr.js";
+import billingRoutes from "./routes/billing.js";
+import billingUi from "./routes/billing-ui.js";
+import invitesRoutes from "./routes/invites.js";
+import docUrlRoutes from "./routes/doc_urls.js";
+import rbac from "./mw/rbac.js";
+import jobsRoutes from "./routes/jobs.js";
+import feedbackRoutes from "./routes/feedback.js";
+import consentRoutes from "./routes/consent.js";
 
 const app = Fastify({
   logger: {
@@ -39,9 +44,8 @@ const app = Fastify({
   },
 });
 
-await app.register(cors, { origin: true, credentials: true });
-await app.register(jwt, { secret: process.env.JWT_SECRET || "dev-secret" });
 await app.register(cors, { origin: (_origin, cb) => cb(null, true), credentials: true });
+await app.register(jwt, { secret: process.env.JWT_SECRET || "dev-secret" });
 await app.register(rateLimit, {
   max: 300,
   timeWindow: "1 minute",
@@ -49,26 +53,13 @@ await app.register(rateLimit, {
     (req.headers["x-org-id"] as string) || (req.user?.org_id as string) || (req as any).orgId || req.ip,
 });
 await app.register(redact);
+await app.register(auth);
 await app.register(rbac);
-
-// Simple auth hook: parse JWT if present; set org_id for RLS context
-app.addHook("preHandler", async (req, _reply) => {
-  const auth = req.headers["authorization"];
-  if (auth && auth.startsWith("Bearer ")) {
-    try {
-      const token = auth.slice(7);
-      const decoded = app.jwt.decode(token) as any;
-      (req as any).orgId = decoded?.org_id || decoded?.orgId || null;
-    } catch {
-      // ignore
-    }
-  }
-});
 
 app.get("/health", async () => ({ ok: true }));
 
-// Register feature routes
 await app.register(documentsRoutes);
+await app.register(childrenRoutes);
 await app.register(askRoutes);
 await app.register(extractRoutes);
 await app.register(briefRoutes);
@@ -91,8 +82,17 @@ await app.register(billingRoutes);
 await app.register(billingUi);
 await app.register(invitesRoutes);
 await app.register(docUrlRoutes);
+await app.register(jobsRoutes);
+await app.register(feedbackRoutes);
+await app.register(consentRoutes);
 
-// Tool endpoints (stubs)
+app.setErrorHandler((err: any, req, reply) => {
+  if (err?.statusCode === 400 && /image data/i.test(String(err?.message))) {
+    (req as any).log.error({ route: (req as any).raw?.url, bodyShape: typeof (req as any).body }, "OpenAI 400 invalid image input");
+  }
+  reply.send(err);
+});
+
 app.post("/tools/doc-ingest", async (_req, reply) => reply.send({ ok: true }));
 app.post("/tools/iep-extract", async (_req, reply) => reply.send({ ok: true }));
 app.post("/tools/rag-ask", async (_req, reply) => reply.send({ ok: true }));
@@ -104,10 +104,15 @@ app.post("/tools/email-calendar", async (_req, reply) => reply.send({ ok: true }
 
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || "0.0.0.0";
-app.listen({ port, host }).then(() => {
-  app.log.info(`API listening on http://${host}:${port}`);
-  ensureBucket().catch((err) => app.log.warn({ err }, "ensureBucket failed"));
-}).catch((err) => {
-  app.log.error(err, "Failed to start API");
-  process.exit(1);
-});
+app
+  .listen({ port, host })
+  .then(() => {
+    app.log.info(`API listening on http://${host}:${port}`);
+    ensureBucket().catch((err) => app.log.warn({ err }, "ensureBucket failed"));
+  })
+  .catch((err) => {
+    app.log.error(err, "Failed to start API");
+    process.exit(1);
+  });
+
+

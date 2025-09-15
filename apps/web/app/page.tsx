@@ -50,6 +50,7 @@ export default function HomePage() {
 
       <div className="border rounded p-4">
         <h2 className="font-medium mb-2">{msgs["home.ask.title"] || "Ask about your documents"}</h2>
+        <div className="text-xs text-gray-500 mb-2">Not legal or medical advice.</div>
         <div className="flex gap-2">
           <input className="flex-1 border rounded px-3 py-2" placeholder={msgs["home.ask.placeholder"] || "Ask a question..."} value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="bg-sky-500 text-white rounded px-3 py-2" onClick={ask} disabled={loading}>{loading ? "Asking..." : "Ask"}</button>

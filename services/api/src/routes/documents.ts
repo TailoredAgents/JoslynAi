@@ -1,9 +1,9 @@
 import { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import crypto from "node:crypto";
-import { prisma } from "../lib/db";
-import { putObject } from "../lib/s3";
-import { enqueue } from "../lib/redis";
+import { prisma } from "../lib/db.js";
+import { putObject } from "../lib/s3.js";
+import { enqueue } from "../lib/redis.js";
 
 function guessDocType(filename: string) {
   const f = filename.toLowerCase();
@@ -79,8 +79,33 @@ export default async function routes(fastify: FastifyInstance) {
 
     if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
 
-    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename });
+    // Create job run for tracking
+    let jobId: string | null = null;
+    try {
+      const job = await (prisma as any).job_runs.create({
+        data: { child_id: childId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
+        select: { id: true }
+      });
+      jobId = job?.id || null;
+    } catch {}
 
-    return reply.send({ document_id: documentId, storage_key: key });
+    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename, job_id: jobId });
+
+    return reply.send({ document_id: documentId, storage_key: key, job_id: jobId });
+  });
+
+  // Spans by document/page to aid highlighter
+  fastify.get<{ Params: { id: string }, Querystring: { page?: string } }>("/documents/:id/spans", async (req, reply) => {
+    const { id } = req.params as any;
+    const page = Number(((req.query as any)?.page || 0));
+    const where: any = { document_id: id };
+    if (page) where.page = page;
+    const spans = await (prisma as any).doc_spans.findMany({
+      where,
+      select: { id: true, page: true, text: true, bbox: true, document_id: true, page_width: true, page_height: true },
+      orderBy: { page: "asc" }
+    });
+    return reply.send(spans);
   });
 }
+

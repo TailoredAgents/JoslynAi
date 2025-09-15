@@ -1,30 +1,30 @@
 {
-  "name": "@iep-ally/core",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./llm/openai": "./dist/llm/openai.js",
-    "./llm/usage": "./dist/llm/usage.js",
-    "./rag/retriever": "./dist/rag/retriever.js",
-    "./smart_attachments/*": "./dist/smart_attachments/*.js",
-    "./schemas/*": "./schemas/*",
-    "./prompts/*": "./prompts/*"
-    }
-  ,
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "lint": "echo 'no lint in core yet'",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "devDependencies": {
-    "typescript": "5.5.4",
-    "@types/node": "20.14.12"
-  }
+    "name":  "@iep-ally/core",
+    "version":  "0.0.1",
+    "private":  true,
+    "type":  "module",
+    "main":  "dist/index.js",
+    "types":  "dist/index.d.ts",
+    "exports":  {
+                    ".":  {
+                              "types":  "./dist/index.d.ts",
+                              "default":  "./dist/index.js"
+                          },
+                    "./llm/openai":  "./dist/llm/openai.js",
+                    "./llm/usage":  "./dist/llm/usage.js",
+                    "./rag/retriever":  "./dist/rag/retriever.js",
+                    "./smart_attachments/*":  "./dist/smart_attachments/*.js",
+                    "./schemas/*":  "./schemas/*",
+                    "./prompts/*":  "./prompts/*",
+                    "./agent/orchestrator":  "./dist/agent/orchestrator.js"
+                },
+    "scripts":  {
+                    "build":  "tsc -p tsconfig.json",
+                    "lint":  "echo \u0027no lint in core yet\u0027",
+                    "typecheck":  "tsc -p tsconfig.json --noEmit"
+                },
+    "devDependencies":  {
+                            "typescript":  "5.5.4",
+                            "@types/node":  "20.14.12"
+                        }
 }

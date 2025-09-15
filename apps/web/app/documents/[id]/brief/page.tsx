@@ -7,28 +7,42 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 
 export default function BriefPage() {
   const params = useParams<{ id: string }>();
+  const docId = params?.id;
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const childId = "demo-child";
 
   useEffect(() => {
+    if (!docId) return;
+    let cancelled = false;
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/documents/${params.id}/brief?child_id=${childId}&lang=en`);
-        const d = await res.json();
-        setData(d);
+        const res = await fetch(`${API_BASE}/documents/${docId}/brief?child_id=${childId}&lang=en`);
+        if (!cancelled) {
+          const d = await res.json();
+          setData(d);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setData(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
     run();
-  }, [params?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [docId]);
 
-  if (loading) return <div>Loading brief…</div>;
+  if (!docId) return <div>Loading brief...</div>;
+  if (loading) return <div>Loading brief...</div>;
   if (!data) return <div>Brief not available.</div>;
 
-  // Group citations by document_id
   const byDoc = new Map<string, { doc_name: string; cites: { page: number; quote: string }[] }>();
   for (const c of data.citations || []) {
     const key = c.document_id as string;
@@ -42,7 +56,6 @@ export default function BriefPage() {
   function buildQjson(cites: { page: number; quote: string }[]) {
     const trimmed = cites.slice(0, 12);
     try {
-      // Prefer Buffer if available (SSR); fallback to btoa on client
       const anyGlobal: any = globalThis as any;
       if (anyGlobal.Buffer) return anyGlobal.Buffer.from(JSON.stringify(trimmed), "utf-8").toString("base64");
       return btoa(unescape(encodeURIComponent(JSON.stringify(trimmed))));
@@ -76,7 +89,6 @@ export default function BriefPage() {
         </div>
       )}
 
-      {/* Citations grouped by document */}
       {byDoc.size > 0 && (
         <section className="mt-6 space-y-4">
           <h2 className="font-medium text-lg">Citations</h2>
@@ -97,10 +109,10 @@ export default function BriefPage() {
                 <ul className="list-disc ml-5 space-y-1">
                   {cites.slice(0, 12).map((c, i) => (
                     <li key={`${c.page}-${i}`}>
-                      <span className="text-gray-700">p.{c.page} — </span>
+                      <span className="text-gray-700">p.{c.page} - </span>
                       <span className="text-gray-600">
                         {c.quote?.slice(0, 140)}
-                        {c.quote?.length > 140 ? "…" : ""}
+                        {c.quote?.length > 140 ? "..." : ""}
                       </span>{" "}
                       <Link
                         href={`/documents/${docId}/view?page=${c.page}&q=${encodeURIComponent(c.quote || "")}`}

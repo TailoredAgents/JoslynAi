@@ -11,8 +11,9 @@ services:
       - "9001:9001"
     volumes:
       - ./docker-data/minio:/data
+
   postgres:
-    image: postgres:16
+    image: ankane/pgvector:latest
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -21,6 +22,11 @@ services:
       - "5432:5432"
     volumes:
       - ./docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   redis:
     image: redis:7
@@ -45,11 +51,15 @@ services:
       MAIL_PORT: 1025
       MAIL_FROM: no-reply@iep-ally.local
       ADMIN_API_KEY: dev-admin
+      OPENAI_API_KEY: dev-openai
       INTERNAL_API_KEY: dev-internal
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
     ports:
       - "8080:8080"
 
@@ -61,7 +71,8 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
     depends_on:
-      - api
+      api:
+        condition: service_started
     ports:
       - "3000:3000"
 
@@ -78,11 +89,17 @@ services:
       S3_SECRET_ACCESS_KEY: minioadmin
       INTERNAL_API_KEY: dev-internal
       API_URL: http://api:8080
+      OPENAI_API_KEY: dev-openai
     depends_on:
-      - postgres
-      - redis
-      - minio
-  
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      api:
+        condition: service_started
+
   mailhog:
     image: mailhog/mailhog:latest
     ports:

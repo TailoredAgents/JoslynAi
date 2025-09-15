@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import PdfHighlighter from "../../../../components/PdfHighlighter";
+import dynamic from "next/dynamic";
+
+const PdfHighlighter = dynamic(() => import("../../../../components/PdfHighlighter"), { ssr: false });
 
 type Citation = { page: number; quote: string };
 
@@ -16,12 +18,11 @@ export default function DocumentViewPage() {
       .then(r => r.json())
       .then(d => setPdfUrl(d.url))
       .catch(() => setPdfUrl(null));
-    // parse query for highlights
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      const singlePage = sp.get('page');
-      const singleQuote = sp.get('q');
-      const qjson = sp.get('qjson');
+      const singlePage = sp.get("page");
+      const singleQuote = sp.get("q");
+      const qjson = sp.get("qjson");
       let cites: Citation[] = [];
       if (qjson) {
         try {
@@ -35,12 +36,12 @@ export default function DocumentViewPage() {
     }
   }, [params?.id]);
 
-  if (!pdfUrl) return <div className="p-6">Loading document…</div>;
+  if (!pdfUrl) return <div className="p-6">Loading document...</div>;
 
   return (
     <div className="p-4">
       <div className="mb-3 text-sm text-gray-600">Document #{params?.id as any}</div>
-      <PdfHighlighter url={pdfUrl} citations={citations} />
+      <PdfHighlighter url={pdfUrl} citations={citations} docId={String(params?.id)} />
     </div>
   );
 }
