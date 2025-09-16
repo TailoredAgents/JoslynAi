@@ -9,8 +9,7 @@ const CHILD_ID = "demo-child";
 const SUGGESTIONS = [
   "What services and minutes are listed?",
   "Which goals mention speech therapy?",
-  "Draft a recap email after today’s meeting.",
-  "What accommodations support regulation?"
+  "Draft a recap email after today’s meeting."
 ];
 
 type ChatMessage = {
