@@ -1,6 +1,13 @@
 // Hybrid retriever: BM25 via tsvector + pgvector, RRF blend
 export type Span = { id: string; document_id: string; doc_name: string; page: number; text: string; scoreLex?: number; scoreVec?: number };
 
+
+function isUuid(value: string | undefined | null): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 function rrfFuse(lex: Span[], vec: Span[], k = 60, top = 12): Span[] {
   const map = new Map<string, Span & { rrf: number }>();
   lex.forEach((s, i) => {
@@ -19,6 +26,9 @@ function rrfFuse(lex: Span[], vec: Span[], k = 60, top = 12): Span[] {
 }
 
 export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12, docId?: string) {
+  if (!isUuid(childId)) {
+    return [];
+  }
   const lex = await prisma.$queryRawUnsafe(
     `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
             ts_rank_cd(ds.tsv, plainto_tsquery('english', $1)) AS "scoreLex"
