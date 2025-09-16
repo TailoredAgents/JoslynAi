@@ -1,8 +1,17 @@
+
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 const CHILD_ID = "demo-child";
+
+const SUGGESTIONS = [
+  "What services and minutes are listed?",
+  "Which goals mention speech therapy?",
+  "Draft a recap email after today’s meeting.",
+  "What accommodations support regulation?"
+];
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -49,36 +58,46 @@ export default function CopilotPage() {
     }
   }
 
-  async function askCopilot() {
-    if (!question.trim()) return;
-    const prompt = question.trim();
-    setMessages((prev) => [...prev, { role: "user", content: prompt }]);
-    setQuestion("");
+  async function askCopilot(prompt?: string) {
+    const query = (prompt ?? question).trim();
+    if (!query) return;
+    setMessages((prev) => [...prev, { role: "user", content: query }]);
+    if (!prompt) {
+      setQuestion("");
+    }
     setThinking(true);
     try {
       const res = await fetch(`${API_BASE}/children/${CHILD_ID}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: prompt })
+        body: JSON.stringify({ query })
       });
       const data = await res.json();
       const answer = data?.answer ?? "I wasn’t able to find that just yet.";
       setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
     } catch (err) {
       console.error(err);
-      setMessages((prev) => [...prev, { role: "assistant", content: "I hit a snag reaching Joslyn AI. Try again in a moment." }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "I hit a snag reaching Joslyn AI. Try again in a moment."
+        }
+      ]);
     } finally {
       setThinking(false);
     }
   }
 
-  const jobSummary = useMemo(() => (
-    jobs.map((job: any) => ({
-      id: job.id,
-      type: job.type?.replace(/_/g, " ") ?? "job",
-      status: job.status ?? "pending"
-    }))
-  ), [jobs]);
+  const jobSummary = useMemo(
+    () =>
+      jobs.map((job: any) => ({
+        id: job.id,
+        type: job.type?.replace(/_/g, " ") ?? "job",
+        status: job.status ?? "pending"
+      })),
+    [jobs]
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 py-10">
@@ -129,21 +148,37 @@ export default function CopilotPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <input
-              className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
-              placeholder="Ask a question about your child’s plan…"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-            />
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600 disabled:opacity-40"
-              onClick={askCopilot}
-              disabled={thinking || !question.trim()}
-            >
-              Send
-            </button>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className="rounded-full border border-brand-200 bg-brand-50 px-4 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
+                  onClick={() => askCopilot(suggestion)}
+                  disabled={thinking}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
+                placeholder="Ask a question about your child’s plan…"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+              />
+              <button
+                type="button"
+                className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600 disabled:opacity-40"
+                onClick={() => askCopilot()}
+                disabled={thinking || !question.trim()}
+              >
+                Send
+              </button>
+            </div>
           </div>
         </div>
 
