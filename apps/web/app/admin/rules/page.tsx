@@ -1,5 +1,5 @@
-"use client";
-import { useEffect, useMemo, useState } from "react";
+﻿"use client";
+import { useMemo, useState, useEffect } from "react";
 
 type Rule = {
   id: string;
@@ -19,130 +19,172 @@ export default function AdminRulesPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [scope, setScope] = useState("all");
+
+  const headerKey = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem("adminKey");
+      if (stored) return stored;
+    }
+    return ADMIN_KEY;
+  }, []);
 
   async function load() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/admin/rules`, {
-        headers: ADMIN_KEY ? { "x-admin-api-key": ADMIN_KEY } : {},
+        headers: headerKey ? { "x-admin-api-key": headerKey } : {}
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setRules(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      setError(String(e?.message || e));
+    } catch (err: any) {
+      setError(String(err?.message || err));
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function save(r: Rule) {
-    setSaving(r.id); setError(null);
+  async function save(rule: Rule) {
+    setSaving(rule.id);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/admin/rules/${r.id}`, {
+      const res = await fetch(`${API_BASE}/admin/rules/${rule.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(ADMIN_KEY ? { "x-admin-api-key": ADMIN_KEY } : {}),
+          ...(headerKey ? { "x-admin-api-key": headerKey } : {})
         },
         body: JSON.stringify({
-          delta_days: Number(r.delta_days) || 0,
-          description: r.description || null,
-          source_url: r.source_url || null,
-          active: !!r.active,
-        }),
+          delta_days: Number(rule.delta_days) || 0,
+          description: rule.description || null,
+          source_url: rule.source_url || null,
+          active: !!rule.active
+        })
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await load();
-    } catch (e: any) {
-      setError(String(e?.message || e));
+    } catch (err: any) {
+      setError(String(err?.message || err));
     } finally {
       setSaving(null);
     }
   }
 
-  function update(id: string, patch: Partial<Rule>) {
+  function updateRule(id: string, patch: Partial<Rule>) {
     setRules((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Admin: Timeline Rules</h2>
-      {!ADMIN_KEY && (
-        <div className="text-sm text-amber-700">Warning: NEXT_PUBLIC_ADMIN_API_KEY not set; requests may be unauthorized.</div>
-      )}
-      {error && <div className="text-sm text-red-600">Error: {error}</div>}
+  const filteredRules = useMemo(() => {
+    return rules.filter((r) => {
+      const matchesScope = scope === "all" || r.jurisdiction.toLowerCase().includes(scope.toLowerCase());
+      const searchText = `${r.kind} ${r.description ?? ""}`.toLowerCase();
+      const matchesSearch = searchText.includes(search.toLowerCase());
+      return matchesScope && matchesSearch;
+    });
+  }, [rules, scope, search]);
 
-      <div className="overflow-x-auto border rounded">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left border-b bg-gray-50">
-              <th className="p-2">Jurisdiction</th>
-              <th className="p-2">Kind</th>
-              <th className="p-2">Delta (days)</th>
-              <th className="p-2">Description</th>
-              <th className="p-2">Source URL</th>
-              <th className="p-2">Active</th>
-              <th className="p-2 w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td className="p-3" colSpan={7}>Loading…</td></tr>
-            ) : rules.length === 0 ? (
-              <tr><td className="p-3" colSpan={7}>No rules found.</td></tr>
-            ) : (
-              rules.map((r) => (
-                <tr key={r.id} className="border-b align-top">
-                  <td className="p-2 whitespace-nowrap">{r.jurisdiction}</td>
-                  <td className="p-2 whitespace-nowrap">{r.kind}</td>
-                  <td className="p-2 w-28">
-                    <input
-                      type="number"
-                      className="border rounded px-2 py-1 w-24"
-                      value={r.delta_days}
-                      onChange={(e) => update(r.id, { delta_days: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <textarea
-                      className="border rounded px-2 py-1 w-full h-16"
-                      value={r.description || ""}
-                      onChange={(e) => update(r.id, { description: e.target.value })}
-                    />
-                  </td>
-                  <td className="p-2 w-64">
-                    <input
-                      className="border rounded px-2 py-1 w-full"
-                      placeholder="https://…"
-                      value={r.source_url || ""}
-                      onChange={(e) => update(r.id, { source_url: e.target.value })}
-                    />
-                  </td>
-                  <td className="p-2 w-16 text-center">
-                    <input
-                      type="checkbox"
-                      checked={!!r.active}
-                      onChange={(e) => update(r.id, { active: e.target.checked })}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <button
-                      className="bg-sky-600 text-white rounded px-3 py-1 disabled:opacity-60"
-                      onClick={() => save(r)}
-                      disabled={saving === r.id}
-                    >
-                      {saving === r.id ? "Saving…" : "Save"}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-10 py-8">
+      <header className="space-y-3">
+        <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-brand-600">
+          Admin settings
+        </span>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-heading text-slate-900">Timeline rules</h1>
+            <p className="text-sm text-slate-600">Tune how Ally calculates deadlines by jurisdiction and rule type.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
+            {headerKey ? "Authenticated with admin key" : "Provide NEXT_PUBLIC_ADMIN_API_KEY to edit."}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+          <input
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm sm:w-64"
+            placeholder="Search rules by kind or description"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
+            <option value="all">All jurisdictions</option>
+            <option value="US-*">US (default)</option>
+            <option value="CA">CA</option>
+            <option value="NY">NY</option>
+          </select>
+        </div>
+      </header>
+
+      {loading && <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Loading rules…</div>}
+      {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+
+      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {filteredRules.map((rule) => (
+          <article key={rule.id} className="flex h-full flex-col justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-brand-600">
+                <span className="inline-flex items-center rounded-full border border-brand-200 px-3 py-1">{rule.jurisdiction}</span>
+                <span className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 capitalize">{rule.kind.replace(/_/g, " ")}</span>
+              </div>
+              <label className="block space-y-1 text-xs uppercase tracking-wide text-slate-400">
+                Delta days
+                <input
+                  type="number"
+                  className="w-24 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  value={rule.delta_days}
+                  onChange={(e) => updateRule(rule.id, { delta_days: Number(e.target.value) })}
+                />
+              </label>
+              <label className="block space-y-1 text-xs uppercase tracking-wide text-slate-400">
+                Description
+                <textarea
+                  className="h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  value={rule.description || ""}
+                  onChange={(e) => updateRule(rule.id, { description: e.target.value })}
+                />
+              </label>
+              <label className="block space-y-1 text-xs uppercase tracking-wide text-slate-400">
+                Source
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  placeholder="https://..."
+                  value={rule.source_url || ""}
+                  onChange={(e) => updateRule(rule.id, { source_url: e.target.value })}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <input type="checkbox" checked={!!rule.active} onChange={(e) => updateRule(rule.id, { active: e.target.checked })} />
+                Active
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                className="inline-flex items-center rounded-full bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-40"
+                onClick={() => save(rule)}
+                disabled={saving === rule.id}
+              >
+                {saving === rule.id ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </article>
+        ))}
+        {filteredRules.length === 0 && !loading && (
+          <div className="col-span-full rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            No rules match your filters.
+          </div>
+        )}
+      </section>
     </div>
   );
 }

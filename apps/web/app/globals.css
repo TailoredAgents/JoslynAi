@@ -1,7 +1,38 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body { height: 100%; }
-body { color: #0f172a; }
+:root {
+  color-scheme: light;
+  --background: #f8f9ff;
+  --foreground: #0f172a;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-900 font-body antialiased min-h-[100dvh];
+}
+
+a {
+  @apply text-brand-600 transition-colors duration-200;
+}
+
+a:hover {
+  @apply text-brand-500;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-heading text-slate-900;
+}
+
+::-moz-selection {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+}
 
