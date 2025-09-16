@@ -53,7 +53,7 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post("/tools/letter/render", async (req, reply) => {
-    const { requireEntitlement } = await import("../mw/entitlements");
+    const { requireEntitlement } = await import("../mw/entitlements.js");
     await requireEntitlement(req, reply, "letters.render");
     const { letter_id } = (req.body as any);
     const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
@@ -76,7 +76,7 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post("/tools/letter/send", async (req, reply) => {
-    const { requireEntitlement } = await import("../mw/entitlements");
+    const { requireEntitlement } = await import("../mw/entitlements.js");
     await requireEntitlement(req, reply, "letters.send");
     const org_id = (req as any).user?.org_id || "demo-org";
     // @ts-ignore requireRole from RBAC
