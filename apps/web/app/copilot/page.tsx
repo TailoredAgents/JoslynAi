@@ -7,9 +7,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 const CHILD_ID = "demo-child";
 
 const SUGGESTIONS = [
-  "What services and minutes are listed?",
-  "Which goals mention speech therapy?",
-  "Draft a recap email after today’s meeting."
+  "List services & minutes",
+  "Show speech therapy goals",
+  "Draft recap email"
 ];
 
 type ChatMessage = {
@@ -154,7 +154,7 @@ export default function CopilotPage() {
                 <button
                   key={suggestion}
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-600 shadow-sm transition hover:border-brand-400 hover:text-brand-700 focus:outline-none focus:ring focus:ring-brand-200/70"
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-brand-600 shadow-sm transition hover:border-brand-400 hover:text-brand-700 focus:outline-none focus:ring focus:ring-brand-200/70"
                   onClick={() => askCopilot(suggestion)}
                   disabled={thinking}
                 >
