@@ -51,7 +51,7 @@ services:
       MAIL_PORT: 1025
       MAIL_FROM: no-reply@joslyn-ai.local
       ADMIN_API_KEY: dev-admin
-      OPENAI_API_KEY: dev-openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       INTERNAL_API_KEY: dev-internal
     depends_on:
       postgres:
@@ -89,7 +89,7 @@ services:
       S3_SECRET_ACCESS_KEY: minioadmin
       INTERNAL_API_KEY: dev-internal
       API_URL: http://api:8080
-      OPENAI_API_KEY: dev-openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
