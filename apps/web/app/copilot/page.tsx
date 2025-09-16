@@ -150,15 +150,16 @@ export default function CopilotPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
-                  className="rounded-full border border-brand-200 bg-brand-50 px-4 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-600 shadow-sm transition hover:border-brand-400 hover:text-brand-700 focus:outline-none focus:ring focus:ring-brand-200/70"
                   onClick={() => askCopilot(suggestion)}
                   disabled={thinking}
                 >
+                  <span className="h-2 w-2 rounded-full bg-brand-400" aria-hidden />
                   {suggestion}
                 </button>
               ))}
