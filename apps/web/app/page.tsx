@@ -11,17 +11,17 @@ const featureHighlights = [
   {
     title: "Upload & glow",
     body: "Drop in evaluations, IEPs, or 504 plans. We extract services, goals, and red flags automatically.",
-    icon: "??"
+    icon: "📄"
   },
   {
     title: "Deadlines on autopilot",
     body: "Never miss a meeting or response window. Personalized timelines adapt to your jurisdiction.",
-    icon: "?"
+    icon: "⏰"
   },
   {
     title: "Parent-friendly letters",
-    body: "Draft requests, follow-ups, and gratitude notes in minutes�ready to translate and send.",
-    icon: "??"
+    body: "Draft requests, follow-ups, and gratitude notes in minutes—ready to translate and send.",
+    icon: "💌"
   }
 ];
 
@@ -83,6 +83,12 @@ export default function HomePage() {
               Start a guided onboarding
             </Link>
             <Link
+              href="/copilot"
+              className="inline-flex items-center rounded-full border border-brand-200 px-6 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
+            >
+              Open the copilot workspace
+            </Link>
+            <Link
               href="mailto:hello@joslyn.ai"
               className="inline-flex items-center rounded-full border border-brand-200 px-6 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
             >
@@ -123,7 +129,7 @@ export default function HomePage() {
               onClick={ask}
               disabled={loading}
             >
-              {loading ? "Thinking�" : "Ask"}
+              {loading ? "Thinking..." : "Ask"}
             </button>
           </div>
           {answer && (
@@ -153,10 +159,10 @@ export default function HomePage() {
                         <div className="flex items-center justify-between text-slate-600">
                           <span className="font-semibold text-slate-700">{doc_name}</span>
                           <Link className="text-brand-500 hover:text-brand-600" href={`/documents/${docId}/view?qjson=${encodeURIComponent(qjson)}`} target="_blank">
-                            View highlights ?
+                            View highlights →
                           </Link>
                         </div>
-                        <p>p.{cites[0]?.page}: {cites[0]?.quote.slice(0, 100)}{cites[0]?.quote.length > 100 ? "�" : ""}</p>
+                        <p>p.{cites[0]?.page}: {cites[0]?.quote.slice(0, 100)}{cites[0]?.quote.length > 100 ? "..." : ""}</p>
                       </div>
                     );
                   });
@@ -184,7 +190,7 @@ export default function HomePage() {
           <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain language.</p>
           <div className="mt-6 space-y-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              "Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid."<br />
+              “Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid.”<br />
               <span className="mt-2 block font-semibold text-slate-800">� Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -200,28 +206,28 @@ export default function HomePage() {
               <p className="font-semibold text-slate-800">Guided onboarding</p>
               <p className="mt-1 text-xs">Create a child profile, upload sample docs, and see an instant brief.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/onboarding">
-                Begin now ?
+                Begin now →
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Share a story</p>
               <p className="mt-1 text-xs">Capture strengths, sensory preferences, and joy to share with new providers.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/about-my-child">
-                Build profile ?
+                Build profile →
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Draft letters</p>
               <p className="mt-1 text-xs">Request evaluations, clarify services, and send gratitude in minutes.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/letters/new">
-                Compose now ?
+                Compose now →
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Track claims</p>
               <p className="mt-1 text-xs">Organize reimbursements and explanation of benefits in one spot.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/claims/demo">
-                Review sample ?
+                Review sample →
               </Link>
             </li>
           </ul>
