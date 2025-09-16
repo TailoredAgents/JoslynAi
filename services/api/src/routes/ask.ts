@@ -50,7 +50,21 @@ export default async function routes(fastify: FastifyInstance) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const spans = await retrieveForAsk(prisma as any, openai, childId, query, 12);
-    if (!spans.length) return reply.send({ answer: "I don’t see that in your documents yet.", citations: [] });
+    if (!spans.length) {
+      const fallback = await safeResponsesCreate({
+        model: process.env.OPENAI_MODEL_MINI || "gpt-5-mini",
+        input: [
+          {
+            role: "system",
+            content: "You are Joslyn AI, an IEP/504 co-pilot. Answer general questions clearly and concisely in parent-friendly language. If the question requires the user's documents, explain that you can't see them. Always remind the user this is not legal or medical advice."
+          },
+          { role: "user", content: query }
+        ]
+      } as any);
+
+      const responseText = (fallback as any)?.output?.[0]?.content?.[0]?.text || "I couldn't find that just yet.";
+      return reply.send({ answer: responseText, citations: [] });
+    }
 
     const excerptBlocks = spans.map((s: any, i: number) => `#${i + 1} [${s.doc_name} p.${s.page}] ${s.text.slice(0, 600)}`).join("\n---\n");
 
