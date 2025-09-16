@@ -13,7 +13,7 @@ export default async function routes(app: FastifyInstance) {
       start: [start.getFullYear(), start.getMonth() + 1, start.getDate(), 9, 0],
       duration: { hours: 1 },
       description: `Deadline: ${dl.kind}`,
-      calName: "IEP Ally Deadlines",
+      calName: "Joslyn AI Deadlines",
     });
     if (event.error) return reply.status(500).send({ error: "ics error" });
     reply.header("Content-Type", "text/calendar");

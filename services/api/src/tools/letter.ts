@@ -98,7 +98,7 @@ export default async function routes(app: FastifyInstance) {
     const link = `https://${(process.env.S3_ENDPOINT || '').replace(/^https?:\/\//,"")}/${S3_BUCKET}/${letter.pdf_uri}`;
 
     await transporter.sendMail({
-      from: process.env.MAIL_FROM || "no-reply@iep-ally.local",
+      from: process.env.MAIL_FROM || "no-reply@joslyn-ai.local",
       to, subject: subject || "IEP Letter",
       text: (letter as any).draft_json.text + `\n\nPDF: ${link}`,
       attachments: [{ filename: "letter.pdf", path: link }]

@@ -5,7 +5,7 @@ import { OpenAI } from "openai";
 import { safeResponsesCreate } from "../lib/openai.js";
 import fs from "node:fs";
 import path from "node:path";
-import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
+import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
 
 function readPrompt(rel: string) {
   const p = path.resolve(process.cwd(), rel);

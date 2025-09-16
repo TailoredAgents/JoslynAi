@@ -64,7 +64,7 @@ services:
       - key: MAIL_PORT
         value: 587
       - key: MAIL_FROM
-        value: no-reply@iep-ally.app
+        value: no-reply@joslyn-ai.app
       - key: ADMIN_API_KEY
         generateValue: true
       - key: INTERNAL_API_KEY
@@ -129,7 +129,7 @@ services:
 
 databases:
   - name: iep-ally-postgres
-    databaseName: iep_ally
+    databaseName: joslyn_ai
     plan: starter
     postgresMajorVersion: 16
 

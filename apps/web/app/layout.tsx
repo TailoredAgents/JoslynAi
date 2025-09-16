@@ -8,7 +8,7 @@ const headingFont = Nunito({ subsets: ["latin"], weight: ["500", "600", "700", "
 const bodyFont = Work_Sans({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
-  title: "IEP Ally",
+  title: "Joslyn AI",
   description: "A compassionate AI co-pilot for IEP/504 planning and support",
   manifest: "/manifest.json"
 };
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <footer className="border-t border-slate-200/60 bg-white/85 backdrop-blur-sm">
                 <div className="mx-auto flex w-full max-w-6xl flex-col justify-between gap-4 px-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:px-6 lg:px-8">
                   <div className="space-y-1">
-                    <p className="font-heading text-base text-slate-800">IEP Ally</p>
+                    <p className="font-heading text-base text-slate-800">Joslyn AI</p>
                     <p className="text-slate-500">&copy; {new Date().getFullYear()} Crafted with care for families and educators.</p>
                   </div>
                   <div className="flex flex-wrap gap-4 text-slate-500">

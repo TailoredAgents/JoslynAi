@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import { safeResponsesCreate } from "../lib/openai.js";
-import { retrieveForAsk } from "@iep-ally/core/rag/retriever";
+import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
 
 const system = `You explain an IEP in plain, parent-friendly language at grade 7 level.
 Use only provided excerpts from the user's document. Always include citations.`;

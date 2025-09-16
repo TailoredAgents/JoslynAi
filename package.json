@@ -1,14 +1,14 @@
 {
-  "name": "iep-ally",
+  "name": "joslyn-ai",
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev:web": "pnpm --filter @iep-ally/web dev",
-    "dev:api": "pnpm --filter @iep-ally/api dev",
+    "dev:web": "pnpm --filter @joslyn-ai/web dev",
+    "dev:api": "pnpm --filter @joslyn-ai/api dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "db:migrate": "pnpm --filter @iep-ally/db migrate"
+    "db:migrate": "pnpm --filter @joslyn-ai/db migrate"
   },
   "workspaces": [
     "apps/*",

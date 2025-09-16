@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: iep_ally
+      POSTGRES_DB: joslyn_ai
     ports:
       - "5432:5432"
     volumes:
@@ -40,16 +40,16 @@ services:
     environment:
       NODE_ENV: development
       PORT: 8080
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/iep_ally
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/joslyn_ai
       REDIS_URL: redis://redis:6379
       JWT_SECRET: dev-secret
       S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: iep-ally
+      S3_BUCKET: joslyn-ai
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
       MAIL_HOST: mailhog
       MAIL_PORT: 1025
-      MAIL_FROM: no-reply@iep-ally.local
+      MAIL_FROM: no-reply@joslyn-ai.local
       ADMIN_API_KEY: dev-admin
       OPENAI_API_KEY: dev-openai
       INTERNAL_API_KEY: dev-internal
@@ -81,10 +81,10 @@ services:
       context: .
       dockerfile: infra/docker/worker.Dockerfile
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/iep_ally
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/joslyn_ai
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: iep-ally
+      S3_BUCKET: joslyn-ai
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
       INTERNAL_API_KEY: dev-internal

@@ -5,7 +5,7 @@ export default function App() {
   return (
     <SafeAreaView>
       <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>IEP Ally (Mobile)</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600" }}>Joslyn AI (Mobile)</Text>
         <Text>Skeleton app. Features coming soon.</Text>
       </View>
     </SafeAreaView>

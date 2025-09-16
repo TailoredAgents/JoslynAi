@@ -1,4 +1,4 @@
-IEP Ally — Monorepo
+Joslyn AI — Monorepo
 
 Overview
 
@@ -29,7 +29,7 @@ Database
 
 - Migrate schema and enable extensions/triggers:
   - `make migrate`
-  - or: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/iep_ally pnpm db:migrate`
+  - or: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/joslyn_ai pnpm db:migrate`
 
 Local dev (without Compose)
 

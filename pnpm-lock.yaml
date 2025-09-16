@@ -127,7 +127,7 @@ importers:
       '@fastify/websocket':
         specifier: ^10.0.1
         version: 10.0.1
-      '@iep-ally/core':
+      '@joslyn-ai/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@prisma/client':

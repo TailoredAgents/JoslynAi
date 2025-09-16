@@ -5,7 +5,7 @@ from email.message import EmailMessage
 DB_URL = os.getenv("DATABASE_URL")
 MAIL_HOST = os.getenv("MAIL_HOST", "mailhog")
 MAIL_PORT = int(os.getenv("MAIL_PORT", "1025"))
-MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@iep-ally.local")
+MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@joslyn-ai.local")
 
 def tick():
   if not DB_URL:

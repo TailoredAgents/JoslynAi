@@ -20,7 +20,7 @@ const featureHighlights = [
   },
   {
     title: "Parent-friendly letters",
-    body: "Draft requests, follow-ups, and gratitude notes in minutes—ready to translate and send.",
+    body: "Draft requests, follow-ups, and gratitude notes in minutes�ready to translate and send.",
     icon: "??"
   }
 ];
@@ -73,7 +73,7 @@ export default function HomePage() {
             All the clarity, compassion, and momentum your child deserves in one workspace.
           </h1>
           <p className="max-w-2xl text-lg text-slate-600">
-            IEP Ally turns dense documents into guidance you can act on. Ask questions with citations, see deadlines surface automatically, and share warm snapshots about your child in English and Spanish.
+            Joslyn AI turns dense documents into guidance you can act on. Ask questions with citations, see deadlines surface automatically, and share warm snapshots about your child in English and Spanish.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -110,7 +110,7 @@ export default function HomePage() {
             Live preview
           </div>
           <h2 className="text-lg font-heading text-slate-900">{askLabel}</h2>
-          <p className="mt-1 text-sm text-slate-500">Not legal or medical advice—just clarity, fast.</p>
+          <p className="mt-1 text-sm text-slate-500">Not legal or medical advice�just clarity, fast.</p>
           <div className="mt-4 flex gap-2">
             <input
               className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-inner focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
@@ -123,7 +123,7 @@ export default function HomePage() {
               onClick={ask}
               disabled={loading}
             >
-              {loading ? "Thinking…" : "Ask"}
+              {loading ? "Thinking�" : "Ask"}
             </button>
           </div>
           {answer && (
@@ -156,7 +156,7 @@ export default function HomePage() {
                             View highlights ?
                           </Link>
                         </div>
-                        <p>p.{cites[0]?.page}: {cites[0]?.quote.slice(0, 100)}{cites[0]?.quote.length > 100 ? "…" : ""}</p>
+                        <p>p.{cites[0]?.page}: {cites[0]?.quote.slice(0, 100)}{cites[0]?.quote.length > 100 ? "�" : ""}</p>
                       </div>
                     );
                   });
@@ -181,15 +181,15 @@ export default function HomePage() {
         <div className="rounded-3xl border border-brand-100 bg-white p-6 shadow-uplift">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">Why families choose us</p>
           <h2 className="mt-2 text-2xl font-heading text-slate-900">Designed with neurodiverse caregivers, advocates, and educators.</h2>
-          <p className="mt-3 text-sm text-slate-600">IEP Ally pairs AI precision with human warmth. See every service minute, timeline risk, and letter drafted in plain language.</p>
+          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs AI precision with human warmth. See every service minute, timeline risk, and letter drafted in plain language.</p>
           <div className="mt-6 space-y-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              "IEP Ally helps me walk into meetings calm, confident, and prepared to celebrate my kid."<br />
-              <span className="mt-2 block font-semibold text-slate-800">— Priya, mom & advocate</span>
+              "Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid."<br />
+              <span className="mt-2 block font-semibold text-slate-800">� Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              "Our team trusts the citations and loves that the letters sound human—because they are."<br />
-              <span className="mt-2 block font-semibold text-slate-800">— Marisol, special education director</span>
+              "Our team trusts the citations and loves that the letters sound human�because they are."<br />
+              <span className="mt-2 block font-semibold text-slate-800">� Marisol, special education director</span>
             </div>
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-r from-brand-500 via-brand-400 to-blush-400 p-10 text-white shadow-uplift">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Parents + advocates</p>
-          <h2 className="text-3xl font-heading">Let’s make every meeting feel collaborative, not combative.</h2>
+          <h2 className="text-3xl font-heading">Let�s make every meeting feel collaborative, not combative.</h2>
           <p className="text-sm text-white/80">Invite your team, share bilingual summaries, and walk in knowing the data has your back.</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/onboarding" className="inline-flex items-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-600 shadow-sm transition hover:bg-slate-100">

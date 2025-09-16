@@ -27,8 +27,8 @@ logs-worker:
 	docker compose logs -f worker
 
 migrate:
-	DATABASE_URL=$${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/iep_ally} \
-		pnpm --filter @iep-ally/db migrate
+	DATABASE_URL=$${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/joslyn_ai} \
+		pnpm --filter @joslyn-ai/db migrate
 
 dev-api:
 	PNPM_HOME=$${PNPM_HOME} pnpm dev:api

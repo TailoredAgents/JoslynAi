@@ -66,7 +66,7 @@ export default function HeaderNav() {
             <span className="text-lg font-heading">IA</span>
           </span>
           <div className="flex flex-col">
-            <span className="font-heading text-lg text-slate-900">IEP Ally</span>
+            <span className="font-heading text-lg text-slate-900">Joslyn AI</span>
             <span className="text-xs text-slate-500">Your compassionate IEP co-pilot</span>
           </div>
         </Link>
@@ -175,7 +175,7 @@ export default function HeaderNav() {
           <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-heading uppercase tracking-wide text-brand-500">We’re here for you</p>
+                <p className="text-sm font-heading uppercase tracking-wide text-brand-500">We�re here for you</p>
                 <h3 className="mt-1 text-xl font-heading text-slate-900">Anything we can help with?</h3>
                 <p className="mt-2 text-sm text-slate-500">Tell us what you expected or what felt confusing. A real human will read it.</p>
               </div>
@@ -185,7 +185,7 @@ export default function HeaderNav() {
             </div>
             <textarea
               className="mt-5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-inner focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
-              placeholder="Describe the moment or feature you’d like help with."
+              placeholder="Describe the moment or feature you�d like help with."
               value={helpText}
               onChange={(e) => setHelpText(e.target.value)}
               rows={5}

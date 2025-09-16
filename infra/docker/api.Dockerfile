@@ -7,7 +7,7 @@ COPY services/api ./services/api
 COPY packages/core ./packages/core
 COPY packages/db ./packages/db
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @iep-ally/api build
+RUN pnpm --filter @joslyn-ai/api build
 COPY services/api/docker-entrypoint.sh ./services/api/docker-entrypoint.sh
 RUN chmod +x ./services/api/docker-entrypoint.sh
 EXPOSE 8080

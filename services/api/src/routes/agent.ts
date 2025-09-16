@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { createAgentRunner } from "@iep-ally/core/agent/orchestrator";
+import { createAgentRunner } from "@joslyn-ai/core/agent/orchestrator";
 import { tools } from "../lib/tools-adapter.js";
 import { prisma } from "../lib/db.js";
 
