@@ -74,11 +74,11 @@ export default function BriefPage() {
     <div className="mx-auto w-full max-w-5xl space-y-10 py-8">
       <header className="space-y-4">
         <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-brand-600">
-          Ally brief
+          Joslyn AI brief
         </span>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl space-y-2">
-            <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">What Ally noticed in this IEP</h1>
+            <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">What Joslyn noticed in this IEP</h1>
             <p className="text-sm text-slate-600">Key services, accommodations, and citations surfaced from your upload.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -134,7 +134,7 @@ export default function BriefPage() {
           <span className="rounded-full border border-brand-200 bg-brand-50 px-4 py-1 text-xs font-semibold text-brand-600">{citationGroups.length} documents referenced</span>
         </div>
         <div className="mt-4 space-y-4">
-          {citationGroups.length === 0 && (<div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Upload more pages or run an Ally question to surface citations.</div>)}
+          {citationGroups.length === 0 && (<div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Upload more pages or ask Joslyn AI a question to surface citations.</div>)}
           {citationGroups.map(([id, group]) => {
             const qjson = buildQjson(group.cites);
             return (
@@ -176,7 +176,7 @@ export default function BriefPage() {
             Draft a parent letter
           </Link>
           <Link className="rounded-full border border-brand-200 px-4 py-2 transition hover:border-brand-400" href={`/documents/${docId}/view`}>Review highlights again</Link>
-          <Link className="rounded-full border border-brand-200 px-4 py-2 transition hover:border-brand-400" href="mailto:hello@iepally.com">Share with a care guide</Link>
+          <Link className="rounded-full border border-brand-200 px-4 py-2 transition hover:border-brand-400" href="mailto:hello@joslyn.ai">Share with a care guide</Link>
         </div>
       </section>
     </div>

@@ -63,7 +63,7 @@ export default function DocumentViewPage() {
           <div>
             <h1 className="text-3xl font-heading text-slate-900">IEP document #{docId}</h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Browse the original PDF and jump straight to key highlights Ally discovered. Keep your notes side-by-side
+              Browse the original PDF and jump straight to key highlights Joslyn discovered. Keep your notes side-by-side
               during meetings.
             </p>
           </div>
@@ -82,7 +82,7 @@ export default function DocumentViewPage() {
               href={`/documents/${docId}/brief`}
               className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600"
             >
-              View Ally brief
+              View Joslyn AI brief
             </Link>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function DocumentViewPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-heading text-slate-700">Highlights to review</p>
             {citationSummary.length === 0 ? (
-              <p className="mt-3 text-xs text-slate-500">No highlighted snippets yet. Ask Ally a question or run a brief to generate some.</p>
+              <p className="mt-3 text-xs text-slate-500">No highlighted snippets yet. Ask Joslyn AI a question or run a brief to generate some.</p>
             ) : (
               <ul className="mt-3 space-y-3 text-sm text-slate-600">
                 {citationSummary.map((c) => (
@@ -136,7 +136,7 @@ export default function DocumentViewPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Next best steps</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>� Ask Ally �What services and minutes are listed?� for a quick summary.</li>
+              <li>� Ask Joslyn �What services and minutes are listed?� for a quick summary.</li>
               <li>� Draft an evaluation request under Letters if you notice missing supports.</li>
               <li>� Share a bilingual snapshot via About My Child when onboarding new staff.</li>
             </ul>

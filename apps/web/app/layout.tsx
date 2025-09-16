@@ -1,4 +1,4 @@
-﻿import "./globals.css";
+import "./globals.css";
 import type { Metadata } from "next";
 import HeaderNav from "../components/HeaderNav";
 import { Providers } from "./providers";
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <a className="hover:text-brand-500" href="/legal/terms">Terms</a>
                     <a className="hover:text-brand-500" href="/legal/privacy">Privacy</a>
                     <a className="hover:text-brand-500" href="/legal/sub-processors">Sub-processors</a>
-                    <a className="hover:text-brand-500" href="mailto:support@iepally.com">Support</a>
+                    <a className="hover:text-brand-500" href="mailto:support@joslyn.ai">Support</a>
                   </div>
                 </div>
               </footer>

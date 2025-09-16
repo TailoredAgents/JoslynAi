@@ -38,7 +38,7 @@ export default function ClaimPage() {
             Claim summary
           </span>
           <h1 className="text-3xl font-heading text-slate-900">Claim #{claimId}</h1>
-          <p className="max-w-2xl text-sm text-slate-600">Ally interprets explanation of benefits so you can reconcile reimbursements and spot what needs follow-up.</p>
+          <p className="max-w-2xl text-sm text-slate-600">Joslyn AI interprets explanation of benefits so you can reconcile reimbursements and spot what needs follow-up.</p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold text-brand-600">
           <Link className="rounded-full border border-brand-200 px-4 py-2 transition hover:border-brand-400" href="/claims">View all claims</Link>
@@ -51,7 +51,7 @@ export default function ClaimPage() {
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Ally explanation</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Joslyn AI summary</p>
             <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{data.explanation || "No explanation was generated."}</p>
           </div>
 
@@ -90,7 +90,7 @@ export default function ClaimPage() {
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Need a hand?</p>
-            <p className="mt-2">Email <Link className="font-semibold text-brand-600" href="mailto:hello@iepally.com">hello@iepally.com</Link> and our team will review this claim with you.</p>
+            <p className="mt-2">Email <Link className="font-semibold text-brand-600" href="mailto:hello@joslyn.ai">hello@joslyn.ai</Link> and our team will review this claim with you.</p>
           </div>
         </aside>
       </section>

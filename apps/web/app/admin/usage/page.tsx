@@ -68,7 +68,7 @@ export default function AdminUsagePage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-heading text-slate-900">Usage & cost</h1>
-            <p className="text-sm text-slate-600">Understand how teams are engaging Ally and where tokens are going.</p>
+            <p className="text-sm text-slate-600">Understand how teams are engaging Joslyn and where tokens are going.</p>
           </div>
           <select className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-500" value={windowKey} onChange={(e) => setWindowKey(Number(e.target.value))}>
             <option value={7}>Last 7 days</option>
@@ -92,7 +92,7 @@ export default function AdminUsagePage() {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <TrendCard title="Daily agent runs" description="Volume of Ally questions and actions" points={data.daily.agent_runs} color="brand" />
+            <TrendCard title="Daily agent runs" description="Volume of Joslyn AI questions and actions" points={data.daily.agent_runs} color="brand" />
             <TrendCard title="Daily letters sent" description="Automated drafts and sends" points={data.daily.letters_sent} color="emerald" />
           </section>
 
@@ -100,7 +100,7 @@ export default function AdminUsagePage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-heading text-slate-900">Feature engagement</h2>
-                <p className="text-sm text-slate-600">Top event types recorded by Ally.</p>
+                <p className="text-sm text-slate-600">Top event types recorded by Joslyn.</p>
               </div>
               <span className="rounded-full border border-brand-200 bg-brand-50 px-4 py-1 text-xs font-semibold text-brand-600">{data.features.length} features</span>
             </div>

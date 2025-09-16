@@ -7,7 +7,7 @@ const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 const steps = [
   { id: 1, title: "Say hello", subtitle: "Give us a few basics" },
   { id: 2, title: "Share paperwork", subtitle: "Upload or use a demo IEP" },
-  { id: 3, title: "See your brief", subtitle: "Ask Ally what it found" },
+  { id: 3, title: "See your brief", subtitle: "Ask Joslyn what it found" },
   { id: 4, title: "Draft a letter", subtitle: "Request services with confidence" }
 ];
 
@@ -126,9 +126,9 @@ export default function Onboarding() {
         <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Guided setup
         </span>
-        <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">Let’s tailor Ally for your family.</h1>
+        <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">Let’s tailor Joslyn for your family.</h1>
         <p className="max-w-2xl text-sm text-slate-500">
-          This walkthrough uses a demo IEP so you can see Ally in action. Swap in your own paperwork at any time.
+          This walkthrough uses a demo IEP so you can see Joslyn in action. Swap in your own paperwork at any time.
         </p>
         <div className="relative h-2 overflow-hidden rounded-full bg-slate-200/60">
           <div className="h-full rounded-full bg-brand-500 transition-all" style={progress} />
@@ -165,7 +165,7 @@ export default function Onboarding() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
               <h2 className="text-2xl font-heading text-slate-900">Upload or explore with a sample IEP</h2>
-              <p className="text-sm text-slate-600">Drop in a document anytime. For this walkthrough we’ll use a short demo IEP to show what Ally surfaces.</p>
+              <p className="text-sm text-slate-600">Drop in a document anytime. For this walkthrough we’ll use a short demo IEP to show what Joslyn surfaces.</p>
               <div className="flex flex-wrap gap-3">
                 <button className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400" disabled>
                   Upload my IEP (coming soon)
@@ -206,7 +206,7 @@ export default function Onboarding() {
         {step === 3 && (
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
-              <h2 className="text-2xl font-heading text-slate-900">Let Ally walk the IEP with you</h2>
+              <h2 className="text-2xl font-heading text-slate-900">Let Joslyn walk the IEP with you</h2>
               <p className="text-sm text-slate-600">We’ll generate a quick brief and answer a sample question about services and minutes.</p>
               <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" onClick={runBriefAsk} disabled={loading || !docId}>
                 {loading ? "Creating brief..." : "Run brief & ask"}
@@ -237,7 +237,7 @@ export default function Onboarding() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
               <h2 className="text-2xl font-heading text-slate-900">Draft an evaluation request letter</h2>
-              <p className="text-sm text-slate-600">Ally personalizes the tone and details. Review, adjust, then render as PDF or send securely.</p>
+              <p className="text-sm text-slate-600">Joslyn personalizes the tone and details. Review, adjust, then render as PDF or send securely.</p>
               <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" onClick={draftLetter} disabled={loading || !childId}>
                 {loading ? "Drafting..." : "Draft evaluation letter"}
               </button>
@@ -257,9 +257,9 @@ export default function Onboarding() {
               )}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
                 <p className="font-heading text-sm text-slate-700">Need a human check?</p>
-                <p className="mt-1 text-xs">Book a session with an Ally care guide. We’re former educators and advocates who speak parent.
+                <p className="mt-1 text-xs">Book a session with a Joslyn AI care guide. We’re former educators and advocates who speak parent.
                 </p>
-                <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600" href="mailto:hello@iepally.com">
+                <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600" href="mailto:hello@joslyn.ai">
                   Schedule a session ?
                 </Link>
               </div>
@@ -278,7 +278,7 @@ export default function Onboarding() {
 
       <section className="rounded-3xl border border-brand-100 bg-brand-50/60 p-6 text-sm text-brand-700">
         <p className="font-heading text-sm uppercase tracking-[0.4em] text-brand-600/70">Need help?</p>
-        <p className="mt-2 max-w-2xl text-sm">Live chat with us inside the app, or email <Link className="font-semibold underline" href="mailto:hello@iepally.com">hello@iepally.com</Link>. We support English and Spanish.</p>
+        <p className="mt-2 max-w-2xl text-sm">Live chat with us inside the app, or email <Link className="font-semibold underline" href="mailto:hello@joslyn.ai">hello@joslyn.ai</Link>. We support English and Spanish.</p>
       </section>
     </div>
   );

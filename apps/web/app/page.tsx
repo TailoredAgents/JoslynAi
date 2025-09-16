@@ -40,7 +40,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const askLabel = useMemo(() => msgs?.["home.ask.title"] ?? "Ask Ally about your paperwork", [msgs]);
+  const askLabel = useMemo(() => msgs?.["home.ask.title"] ?? "Ask Joslyn about your paperwork", [msgs]);
 
   async function ask() {
     setLoading(true);
@@ -83,7 +83,7 @@ export default function HomePage() {
               Start a guided onboarding
             </Link>
             <Link
-              href="mailto:hello@iepally.com"
+              href="mailto:hello@joslyn.ai"
               className="inline-flex items-center rounded-full border border-brand-200 px-6 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
             >
               Meet with a care guide
@@ -181,7 +181,7 @@ export default function HomePage() {
         <div className="rounded-3xl border border-brand-100 bg-white p-6 shadow-uplift">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">Why families choose us</p>
           <h2 className="mt-2 text-2xl font-heading text-slate-900">Designed with neurodiverse caregivers, advocates, and educators.</h2>
-          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs AI precision with human warmth. See every service minute, timeline risk, and letter drafted in plain language.</p>
+          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain language.</p>
           <div className="mt-6 space-y-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               "Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid."<br />
@@ -237,8 +237,8 @@ export default function HomePage() {
             <Link href="/onboarding" className="inline-flex items-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-600 shadow-sm transition hover:bg-slate-100">
               Create a free workspace
             </Link>
-            <Link href="mailto:hello@iepally.com" className="inline-flex items-center rounded-full border border-white/60 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-              Invite Ally to your next IEP
+            <Link href="mailto:hello@joslyn.ai" className="inline-flex items-center rounded-full border border-white/60 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
+              Invite Joslyn AI to your next IEP
             </Link>
           </div>
         </div>

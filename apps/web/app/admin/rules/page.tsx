@@ -100,7 +100,7 @@ export default function AdminRulesPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-heading text-slate-900">Timeline rules</h1>
-            <p className="text-sm text-slate-600">Tune how Ally calculates deadlines by jurisdiction and rule type.</p>
+            <p className="text-sm text-slate-600">Tune how Joslyn calculates deadlines by jurisdiction and rule type.</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
             {headerKey ? "Authenticated with admin key" : "Provide NEXT_PUBLIC_ADMIN_API_KEY to edit."}
