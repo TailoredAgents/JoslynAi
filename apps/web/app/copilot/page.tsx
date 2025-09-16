@@ -216,9 +216,9 @@ export default function CopilotPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Sample prompts</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>• What services and minutes are listed?</li>
-              <li>• Which goals mention speech therapy?</li>
-              <li>• Draft a recap email after today’s meeting.</li>
+              <li>• What is an IEP and why does it matter?</li>
+              <li>• How can I prepare for my child’s next IEP meeting?</li>
+              <li>• What supports help during sensory overload?</li>
             </ul>
           </div>
         </aside>

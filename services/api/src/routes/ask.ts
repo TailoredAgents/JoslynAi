@@ -12,6 +12,21 @@ function readPrompt(rel: string) {
   return fs.readFileSync(p, "utf8");
 }
 
+
+const ANSWER_DISCLAIMER = "This guidance is educational only and not legal or medical advice.";
+
+function withDisclaimer(answer: string): string {
+  const trimmed = (answer || "").trim();
+  if (!trimmed) {
+    return ANSWER_DISCLAIMER;
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("not legal") && lower.includes("medical advice")) {
+    return trimmed;
+  }
+  return `${trimmed}\n\n${ANSWER_DISCLAIMER}`;
+}
+
 const askSystem = readPrompt("packages/core/prompts/ask_bar_system.txt");
 
 const AskAnswerSchema = {
@@ -63,7 +78,7 @@ export default async function routes(fastify: FastifyInstance) {
       } as any);
 
       const responseText = (fallback as any)?.output?.[0]?.content?.[0]?.text || "I couldn't find that just yet.";
-      return reply.send({ answer: responseText, citations: [] });
+      return reply.send({ answer: withDisclaimer(responseText), citations: [] });
     }
 
     const excerptBlocks = spans.map((s: any, i: number) => `#${i + 1} [${s.doc_name} p.${s.page}] ${s.text.slice(0, 600)}`).join("\n---\n");
@@ -88,7 +103,7 @@ export default async function routes(fastify: FastifyInstance) {
     if (!parsed) return reply.send({ answer: "I don’t see that in your documents yet.", citations: [] });
 
     const cit = (parsed.citations || []).slice(0, 5);
-    return reply.send({ answer: parsed.answer, citations: cit });
+    return reply.send({ answer: withDisclaimer(parsed.answer), citations: cit });
   });
 }
 
