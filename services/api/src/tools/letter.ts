@@ -89,7 +89,7 @@ export default async function routes(app: FastifyInstance) {
       await (req as any).requireRole(org_id, ["owner","parent"]);
     }
     const { letter_id, to, subject } = (req.body as any);
-    const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
+    const letter = await (prisma as any).letters.findFirst({ where: { id: letter_id, org_id }, select: { pdf_uri: true, draft_json: true } });
     if (!letter?.pdf_uri) return reply.status(400).send({ error: "render first" });
 
     const nodemailer = (await import("nodemailer" as any)).default;

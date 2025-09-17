@@ -24,7 +24,8 @@ async function applyGlossary(org_id: string | undefined, text: string, target: s
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/translate", async (req, reply) => {
-    const { text, target_lang, org_id } = (req.body as any);
+    const { text, target_lang } = (req.body as any);
+    const org_id = (req as any).orgId || (req as any).headers?.['x-org-id'] || (req as any).user?.org_id;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const pre = await applyGlossary(org_id, text, target_lang);
     const resp = await openai.chat.completions.create({

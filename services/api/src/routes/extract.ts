@@ -5,6 +5,7 @@ import { OpenAI } from "openai";
 import { safeResponsesCreate } from "../lib/openai.js";
 import fs from "node:fs";
 import path from "node:path";
+import { orgIdFromRequest } from "../lib/child.js";
 
 function readFile(rel: string) {
   return fs.readFileSync(path.resolve(process.cwd(), rel), "utf8");
@@ -16,6 +17,9 @@ const iepSchema = JSON.parse(readFile("packages/core/schemas/iep.schema.json"));
 export default async function routes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string } }>("/documents/:id/extract/iep", async (req, reply) => {
     const documentId = req.params.id;
+    const orgId = orgIdFromRequest(req as any);
+    const allowed = await (prisma as any).documents.findFirst({ where: { id: documentId, org_id: orgId }, select: { id: true } });
+    if (!allowed) return reply.status(404).send({ error: "not_found" });
 
     const spans = await (prisma as any).doc_spans?.findMany?.({
       where: { document_id: documentId },

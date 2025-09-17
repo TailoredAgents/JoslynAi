@@ -9,12 +9,13 @@ export default async function routes(app: FastifyInstance) {
     const { requireEntitlement } = await import("../mw/entitlements.js");
     await requireEntitlement(req, reply, "smart_attachments");
     const { child_id, denial_reason, limit = 5 } = (req.body as any);
+    const orgId = (req as any).orgId || (req as any).headers?.['x-org-id'] || (req as any).user?.org_id;
     const rules = (SMART_ATTACHMENT_MAP as any)[denial_reason] || [];
     if (!rules.length) return reply.send({ suggestions: [] });
 
     const tags = Array.from(new Set(rules.flatMap((r: any) => r.tags)));
     const docs = await (prisma as any).documents.findMany({
-      where: { child_id, doc_tags: { hasSome: tags } },
+      where: { child_id, org_id: orgId, doc_tags: { hasSome: tags } },
       orderBy: { created_at: "desc" },
       take: 20,
     });

@@ -32,6 +32,11 @@ test.describe("Multi-tenant isolation", () => {
     const urlB = await orgB.get(`http://localhost:8080/documents/${document_id}/url`);
     expect(urlB.status()).toBe(404);
 
+    const spansA = await orgA.get(`http://localhost:8080/documents/${document_id}/spans?page=1`);
+    expect(spansA.ok()).toBeTruthy();
+    const spansB = await orgB.get(`http://localhost:8080/documents/${document_id}/spans?page=1`);
+    expect(spansB.status()).toBe(404);
+
     // jobs should be visible to org A but not to org B
     const jobsA = await orgA.get(`http://localhost:8080/jobs?child_id=${childId}`);
     expect(jobsA.ok()).toBeTruthy();
@@ -76,5 +81,18 @@ test.describe("Multi-tenant isolation", () => {
     const renderB = await orgB.post("http://localhost:8080/tools/letter/render", { data: { letter_id } });
     expect(renderB.status()).toBe(404);
   });
-});
 
+  test("Ask blocked cross-tenant (404 child)", async () => {
+    const orgA = await request.newContext({ extraHTTPHeaders: { "x-org-id": "org-a-e2e" } });
+    const orgB = await request.newContext({ extraHTTPHeaders: { "x-org-id": "org-b-e2e" } });
+
+    const boot = await orgA.get("http://localhost:8080/children/bootstrap");
+    const childId = (await boot.json()).child.id;
+
+    const resA = await orgA.post(`http://localhost:8080/children/${childId}/ask`, { data: { query: "What services and minutes are listed?" } });
+    expect(resA.ok()).toBeTruthy();
+
+    const resB = await orgB.post(`http://localhost:8080/children/${childId}/ask`, { data: { query: "What services and minutes are listed?" } });
+    expect(resB.status()).toBe(404);
+  });
+});

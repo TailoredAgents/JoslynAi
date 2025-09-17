@@ -27,7 +27,7 @@ export default async function routes(app: FastifyInstance) {
   app.get("/jobs", async (req, reply) => {
     const orgId = orgIdFromRequest(req);
     const childIdentifier = (req.query as any)?.child_id;
-    const where: any = {};
+    const where: any = { org_id: orgId };
     if (childIdentifier) {
       const resolved = await resolveChildId(childIdentifier, orgId);
       if (!resolved) {

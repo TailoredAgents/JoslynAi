@@ -104,6 +104,10 @@ export default async function routes(fastify: FastifyInstance) {
   // Spans by document/page to aid highlighter
   fastify.get<{ Params: { id: string }, Querystring: { page?: string } }>("/documents/:id/spans", async (req, reply) => {
     const { id } = req.params as any;
+    const orgId = orgIdFromRequest(req as any);
+    // Assert document belongs to current org; prevents cross-tenant leakage even if RLS session missing
+    const doc = await (prisma as any).documents.findFirst({ where: { id, org_id: orgId }, select: { id: true } });
+    if (!doc) return reply.status(404).send({ error: "not_found" });
     const page = Number(((req.query as any)?.page || 0));
     const where: any = { document_id: id };
     if (page) where.page = page;

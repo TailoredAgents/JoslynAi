@@ -41,7 +41,11 @@ export async function ensureUniqueSlug(candidate: string, orgId?: string | null)
 
 export async function resolveChildId(identifier: string | null | undefined, orgId?: string | null) {
   if (!identifier) return null;
-  if (isUuid(identifier)) return identifier;
+  if (isUuid(identifier)) {
+    // Enforce that UUID belongs to the current org when orgId is provided
+    const found = await (prisma as any).children.findFirst({ where: { id: identifier, ...(orgId ? { org_id: orgId } : {}) }, select: { id: true } });
+    return found?.id || null;
+  }
   const child = await findChildBySlug(identifier, orgId);
   return child?.id || null;
 }
