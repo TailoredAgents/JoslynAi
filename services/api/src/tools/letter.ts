@@ -7,6 +7,7 @@ import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import { safeResponsesCreate } from "../lib/openai.js";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
+import { orgIdFromRequest } from "../lib/child.js";
 
 const TPL_DIR = path.join(process.cwd(), "packages/core/templates/letters");
 
@@ -19,6 +20,7 @@ function loadTemplate(kind: string) {
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/letter/draft", async (req, reply) => {
     const { kind, merge_fields, lang = "en" } = (req.body as any);
+    const orgId = orgIdFromRequest(req as any);
     const { meta, body } = loadTemplate(kind);
     for (const f of (meta.required || [])) {
       if (merge_fields?.[f] == null) return reply.status(400).send({ error: `Missing field: ${f}` });
@@ -43,6 +45,7 @@ export default async function routes(app: FastifyInstance) {
     const row = await (prisma as any).letters.create({
       data: {
         child_id: merge_fields.child_id,
+        org_id: orgId,
         kind,
         status: "draft",
         draft_json: { merge_fields, text: polished }

@@ -42,6 +42,7 @@ export default async function routes(fastify: FastifyInstance) {
       const doc = await (prisma as any).documents?.create?.({
         data: {
           child_id: childId,
+          org_id: orgId,
           type: guessDocType(data.filename),
           storage_uri: key,
           sha256,
@@ -68,10 +69,11 @@ export default async function routes(fastify: FastifyInstance) {
         version = maxV + 1;
       } catch {}
       const row = await prisma.$queryRawUnsafe(
-        `INSERT INTO documents (child_id, type, storage_uri, sha256, doc_tags, original_name, version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO documents (child_id, org_id, type, storage_uri, sha256, doc_tags, original_name, version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
         childId,
+        orgId,
         guessDocType(data.filename),
         key,
         sha256,
@@ -88,7 +90,7 @@ export default async function routes(fastify: FastifyInstance) {
     let jobId: string | null = null;
     try {
       const job = await (prisma as any).job_runs.create({
-        data: { child_id: childId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
+        data: { child_id: childId, org_id: orgId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
         select: { id: true }
       });
       jobId = job?.id || null;

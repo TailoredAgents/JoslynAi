@@ -24,6 +24,7 @@ import nbsRoutes from "./routes/next-best-steps.js";
 import adminUsage from "./routes/admin/usage.js";
 import redact from "./mw/redact.js";
 import auth from "./mw/auth.js";
+import dbSession from "./mw/db-session.js";
 import dsrRoutes from "./routes/dsr.js";
 import billingRoutes from "./routes/billing.js";
 import billingUi from "./routes/billing-ui.js";
@@ -55,6 +56,7 @@ await app.register(rateLimit, {
 await app.register(redact);
 await app.register(auth);
 await app.register(rbac);
+await app.register(dbSession);
 
 app.get("/health", async () => ({ ok: true }));
 

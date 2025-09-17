@@ -1,10 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import dayjs from "dayjs";
+import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/timeline/compute-and-create", async (req, reply) => {
     const { child_id, kind, base_date, jurisdiction = "US-*" } = (req.body as any);
+    const orgId = orgIdFromRequest(req as any);
     const rule = await (prisma as any).timeline_rules.findFirst({
       where: { kind, OR: [{ jurisdiction }, { jurisdiction: "US-*" }], active: true },
       orderBy: [{ jurisdiction: "desc" as const }]
@@ -13,7 +15,7 @@ export default async function routes(app: FastifyInstance) {
 
     const due = dayjs(base_date).add(rule.delta_days, "day").toDate();
     const dl = await (prisma as any).deadlines.create({
-      data: { child_id, kind, base_date: new Date(base_date), due_date: due, jurisdiction }
+      data: { child_id, org_id: orgId, kind, base_date: new Date(base_date), due_date: due, jurisdiction }
     });
     // audit event
     await (prisma as any).events.create({ data: { org_id: (req as any).orgId || null, type: "deadline_create", payload_json: { child_id, kind, base_date, due_date: due } } });

@@ -10,6 +10,11 @@ export default async function routes(app: FastifyInstance) {
 
   app.post("/internal/eob/ingest", async (req, reply) => {
     const { child_id, document_id, parsed } = (req.body as any);
+    let org_id: string | null = null;
+    try {
+      const ch = await (prisma as any).children.findUnique({ where: { id: child_id }, select: { org_id: true } });
+      org_id = ch?.org_id || null;
+    } catch {}
     const existing = await (prisma as any).claims.findFirst({
       where: {
         child_id,
@@ -28,6 +33,7 @@ export default async function routes(app: FastifyInstance) {
       ? await (prisma as any).claims.update({
           where: { id: existing.id },
           data: {
+            org_id: org_id || existing.org_id || null,
             amounts_json: parsed?.amounts ?? existing.amounts_json,
             status: existing.status ?? "open",
             linked_document_ids: linked,
@@ -36,6 +42,7 @@ export default async function routes(app: FastifyInstance) {
       : await (prisma as any).claims.create({
           data: {
             child_id,
+            org_id,
             service_date: parsed?.service_date ? new Date(parsed.service_date) : null,
             provider: parsed?.provider ?? null,
             amounts_json: parsed?.amounts ?? {},
@@ -46,8 +53,8 @@ export default async function routes(app: FastifyInstance) {
 
     const e = await (prisma as any).eobs.upsert({
       where: { document_id },
-      update: { claim_id: claim.id, parsed_json: parsed },
-      create: { claim_id: claim.id, document_id, parsed_json: parsed, explanation_text: null },
+      update: { claim_id: claim.id, org_id: org_id || null, parsed_json: parsed },
+      create: { claim_id: claim.id, document_id, org_id: org_id || null, parsed_json: parsed, explanation_text: null },
     });
 
     return reply.send({ ok: true, claim_id: claim.id, eob_id: e.id });

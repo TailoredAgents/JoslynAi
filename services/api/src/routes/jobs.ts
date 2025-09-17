@@ -14,7 +14,7 @@ export default async function routes(app: FastifyInstance) {
       }
       childIdValue = resolved;
     }
-    const job = await (prisma as any).job_runs.create({ data: { child_id: childIdValue, type, status: "pending", payload_json: payload || {} } });
+    const job = await (prisma as any).job_runs.create({ data: { child_id: childIdValue, org_id: orgId, type, status: "pending", payload_json: payload || {} } });
     return reply.send({ job_id: job.id });
   });
 

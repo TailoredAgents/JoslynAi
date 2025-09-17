@@ -2,15 +2,17 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import QRCode from "qrcode";
+import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>("/children/:id/profile/save", async (req, reply) => {
     const child_id = (req.params as any).id;
+    const org_id = orgIdFromRequest(req as any);
     const profile = (req.body as any) || {};
     await (prisma as any).child_profile.upsert({
       where: { child_id },
-      update: { profile_json: profile },
-      create: { child_id, profile_json: profile },
+      update: { profile_json: profile, org_id },
+      create: { child_id, org_id, profile_json: profile },
     });
     return reply.send({ ok: true });
   });
@@ -63,7 +65,8 @@ export default async function routes(app: FastifyInstance) {
 
     // share link
     const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-    await (prisma as any).share_links.create({ data: { org_id: "demo-org", resource_type: "profile", resource_id: child_id, token } });
+    const org_id = orgIdFromRequest(req as any);
+    await (prisma as any).share_links.create({ data: { org_id: org_id || "", resource_type: "profile", resource_id: child_id, token } });
     const base = process.env.PUBLIC_BASE_URL || "http://localhost:8080";
     const share_url = `${base}/share/${token}`;
     const qr_base64 = await QRCode.toDataURL(share_url);
