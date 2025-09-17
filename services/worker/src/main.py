@@ -1,4 +1,4 @@
-import os, json, threading
+import os, json, threading, datetime
 import redis
 from src.ocr import process_pdf
 from src.index import embed_and_store
@@ -772,6 +772,97 @@ elif kind == "denial_explain":
                     conn2.commit()
             except Exception as inner:
                 print("[WORKER] unable to mark denial explanation error:", inner)
+
+            elif kind == "build_appeal_kit":
+                kit_id = task.get("kit_id")
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url or not kit_id:
+                    continue
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        kit = conn.execute(
+                            "SELECT id, child_id, org_id, denial_id, deadline_date, metadata_json FROM appeal_kits WHERE id=%s",
+                            (kit_id,)
+                        ).fetchone()
+                        if not kit:
+                            continue
+                        denial_id = kit[3]
+                        if not denial_id:
+                            conn.execute(
+                                "UPDATE appeal_kits SET status='error', updated_at=NOW() WHERE id=%s",
+                                (kit_id,)
+                            )
+                            conn.commit()
+                            continue
+                        explanation = conn.execute(
+                            "SELECT explanation_json, next_steps_json, citations_json, status FROM denial_explanations WHERE eob_id=%s",
+                            (denial_id,)
+                        ).fetchone()
+                        if not explanation or explanation[3] != 'ready':
+                            conn.execute(
+                                "UPDATE appeal_kits SET status='pending', updated_at=NOW() WHERE id=%s",
+                                (kit_id,)
+                            )
+                            conn.commit()
+                            continue
+                        explanation_json = explanation[0] or {}
+                        next_steps = explanation[1] or []
+                        citations = explanation[2] or []
+                        conn.execute("DELETE FROM appeal_kit_items WHERE appeal_kit_id=%s", (kit_id,))
+                        cover_lines = [
+                            "To whom it may concern,",
+                            "",
+                            explanation_json.get("overview") or "We are requesting reconsideration of this denial.",
+                        ]
+                        appeal_reason = explanation_json.get("appeal_reason")
+                        if appeal_reason:
+                            cover_lines.append("")
+                            cover_lines.append(f"Why this matters: {appeal_reason}")
+                        cover_lines.append("")
+                        cover_lines.append("Please review the attached evidence and respond within the required timelines.")
+                        cover_letter = "
+".join(cover_lines)
+                        conn.execute(
+                            "INSERT INTO appeal_kit_items (appeal_kit_id, org_id, kind, status, payload_json, citations_json) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (kit_id, org_id, "cover_letter", "ready", Json({"title": "Appeal Letter", "body": cover_letter}), Json(citations))
+                        )
+                        evidence_entries = []
+                        for code in explanation_json.get("codes") or []:
+                            evidence_entries.append({
+                                "code": code.get("code"),
+                                "description": code.get("plain_language"),
+                                "citations": code.get("citations") or []
+                            })
+                        conn.execute(
+                            "INSERT INTO appeal_kit_items (appeal_kit_id, org_id, kind, status, payload_json, citations_json) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (kit_id, org_id, "evidence", "ready", Json({"items": evidence_entries}), Json(citations))
+                        )
+                        checklist = [
+                            {"label": "Signed appeal letter", "completed": False},
+                            {"label": "Copy of denial letter/EOB", "completed": False},
+                            {"label": "Supporting documentation", "completed": False}
+                        ]
+                        for idx, step in enumerate(next_steps or []):
+                            label = step.get("action") or f"Step {idx + 1}"
+                            checklist.append({"label": label, "completed": False})
+                        conn.execute(
+                            "INSERT INTO appeal_kit_items (appeal_kit_id, org_id, kind, status, payload_json, citations_json) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (kit_id, org_id, "checklist", "ready", Json({"items": checklist}), Json(citations))
+                        )
+                        metadata = kit[5] or {}
+                        metadata["appeal_recommended"] = bool(explanation_json.get("appeal_recommended"))
+                        metadata["appeal_reason"] = appeal_reason
+                        metadata["generated_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+                        conn.execute(
+                            "UPDATE appeal_kits SET metadata_json=%s, checklist_json=%s, citations_json=%s, status='ready', updated_at=NOW() WHERE id=%s",
+                            (Json(metadata), Json(checklist), Json(citations), kit_id)
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] build_appeal_kit failed:", e)
             elif kind == "prep_recommendations":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:

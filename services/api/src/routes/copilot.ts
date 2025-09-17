@@ -42,7 +42,10 @@ function detectIntent(query: string): { intent: string; tags: string[]; actions:
   if (/denial|eob|explain code/.test(normalized)) {
     return { intent: "denial.translate", tags: ["denial_letter", "eob"], actions: [{ type: "open_tab", label: "Start appeal kit", href: "/appeals" }] };
   }
-  if (/smart/ .test(normalized) && /goal/.test(normalized)) {
+  if (/appeal kit/.test(normalized) || (/appeal/.test(normalized) && /kit/.test(normalized))) {
+    return { intent: "appeal.kit", tags: [], actions: [{ type: "open_tab", label: "Open appeal kits", href: "/appeals" }] };
+  }
+  if (/smart/.test(normalized) && /goal/.test(normalized)) {
     return { intent: "goals.smart", tags: ["iep"], actions: [{ type: "open_tab", label: "Score SMART goal", href: "/letters/goals" }] };
   }
   return { intent: "general.ask", tags: [], actions: [] };
@@ -240,6 +243,98 @@ ${steps}`);
         follow_ups: followUps,
         summary: overview,
         artifacts: [],
+      });
+    }
+
+
+    if (intentInfo.intent === "appeal.kit") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      const latestEobRows = await (prisma as any).$queryRawUnsafe(
+        `SELECT e.id as eob_id, e.document_id, c.org_id
+           FROM eobs e
+           JOIN claims c ON c.id = e.claim_id
+          WHERE c.child_id = $1
+          ORDER BY e.created_at DESC
+          LIMIT 1`,
+        childId
+      );
+      const candidate = latestEobRows?.[0];
+      if (!candidate?.eob_id || !candidate?.document_id) {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I could not find a denial to build from yet. Upload the EOB or denial letter and I will assemble the kit."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload the denial"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      let kit = await (prisma as any).appeal_kits.findFirst({
+        where: { child_id: childId, denial_id: candidate.eob_id },
+        orderBy: { updated_at: "desc" },
+      });
+      if (!kit) {
+        kit = await (prisma as any).appeal_kits.create({
+          data: {
+            child_id: childId,
+            org_id: orgId,
+            denial_id: candidate.eob_id,
+            status: "pending",
+            metadata_json: {},
+            checklist_json: [],
+            citations_json: [],
+          },
+        });
+        await enqueue({ kind: "build_appeal_kit", kit_id: kit.id, child_id: childId, org_id: orgId });
+      }
+
+      if (kit.status !== "ready") {
+        await enqueue({ kind: "build_appeal_kit", kit_id: kit.id, child_id: childId, org_id: orgId });
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I am assembling that appeal kit now. Give me a moment and open the appeals tab to review progress."),
+          citations: [],
+          actions: [...actions, { type: "open_tab", label: "Open appeal kit", href: `/appeals/${kit.id}` }],
+          follow_ups: ["Refresh appeal kit"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const items = await (prisma as any).appeal_kit_items.findMany({
+        where: { appeal_kit_id: kit.id },
+        orderBy: { created_at: "asc" },
+      });
+      const cover = items.find((item: any) => item.kind === "cover_letter");
+      const checklist = items.find((item: any) => item.kind === "checklist");
+      const letterBody = cover?.payload_json?.body || "The appeal letter is ready to review.";
+      const lines: string[] = [];
+      lines.push(letterBody.split("\n")[0] || letterBody);
+      if (kit.metadata_json?.appeal_reason) {
+        lines.push(`Why appeal: ${kit.metadata_json.appeal_reason}`);
+      }
+      lines.push("Joslyn bundled the supporting evidence and a checklist so you can finalize and send the packet.");
+
+      const answerText = lines.join("\n\n");
+
+      const followUps = ["Preview the appeal letter", "What evidence should we include?"];
+      const citationsPayload = Array.isArray(kit.citations_json) ? kit.citations_json : [];
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(answerText),
+        citations: citationsPayload,
+        actions: [...actions, { type: "open_tab", label: "Open appeal kit", href: `/appeals/${kit.id}` }],
+        follow_ups: followUps,
+        summary: kit.metadata_json?.appeal_reason || null,
+        artifacts: [{ kind: "appeal_kit", id: kit.id }],
       });
     }
 
@@ -499,4 +594,6 @@ ${excerptBlocks}`
     });
   });
 }
+
+
 
