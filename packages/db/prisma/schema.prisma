@@ -113,7 +113,7 @@ model denial_explanations {
   id               String   @id @default(uuid()) @db.Uuid
   org_id           String?  @db.Uuid
   child_id         String?
-  eob_id           String?
+  eob_id           String? @unique
   document_id      String?
   explanation_json Json
   next_steps_json  Json?
@@ -123,7 +123,6 @@ model denial_explanations {
   updated_at       DateTime @updatedAt
 
   @@index([org_id, child_id])
-  @@index([eob_id])
 }
 
 model goal_rewrites {

@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/db.js";
+import { enqueue } from "../../lib/redis.js";
 
 export default async function routes(app: FastifyInstance) {
   app.addHook("onRequest", async (req, reply) => {
@@ -56,6 +57,8 @@ export default async function routes(app: FastifyInstance) {
       update: { claim_id: claim.id, org_id: org_id || null, parsed_json: parsed },
       create: { claim_id: claim.id, document_id, org_id: org_id || null, parsed_json: parsed, explanation_text: null },
     });
+
+    await enqueue({ kind: "denial_explain", eob_id: e.id, document_id, child_id, org_id });
 
     return reply.send({ ok: true, claim_id: claim.id, eob_id: e.id });
   });

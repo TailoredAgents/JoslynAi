@@ -260,6 +260,117 @@ def _openai():
         _OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     return _OPENAI_CLIENT
 
+
+DENIAL_TRANSLATE_SCHEMA = {
+    "name": "DenialExplain",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "overview": {"type": "string"},
+            "codes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": ["string", "null"]},
+                        "title": {"type": ["string", "null"]},
+                        "plain_language": {"type": "string"},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["plain_language"]
+                },
+                "default": []
+            },
+            "next_steps": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string"},
+                        "details": {"type": "string"},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["action", "details"]
+                },
+                "default": []
+            },
+            "appeal_recommended": {"type": "boolean", "default": False},
+            "appeal_reason": {"type": ["string", "null"], "default": None}
+        },
+        "required": ["overview", "codes", "next_steps", "appeal_recommended", "appeal_reason"],
+        "additionalProperties": False
+    }
+}
+
+DENIAL_TRANSLATE_SYSTEM_PROMPT = (
+    "You are Joslyn, a special education and insurance advocate helping caregivers understand denial letters. "
+    "Using only the data and excerpts provided, explain the denial in plain language. Summarize the key codes, the insurer's stated reason, and practical next steps. "
+    "If an appeal looks worthwhile, set appeal_recommended to true and explain why. Cite evidence using the excerpt labels (e.g., [D001])."
+)
+
+
+def _score_eob_span(text: str) -> int:
+    lower = (text or "").lower()
+    score = 1
+    if "denial" in lower or "denied" in lower:
+        score += 3
+    if "code" in lower or "reason" in lower:
+        score += 2
+    if "appeal" in lower or "next step" in lower:
+        score += 2
+    if "benefit" in lower or "coverage" in lower:
+        score += 1
+    if len(lower) > 120:
+        score += 1
+    return score
+
+
+def _select_eob_segments(conn, document_id: str, doc_name: str, limit: int = 40):
+    rows = conn.execute("SELECT id, page, text FROM doc_spans WHERE document_id=%s ORDER BY page ASC LIMIT %s", (document_id, limit * 3)).fetchall()
+    scored = []
+    for row in rows:
+        span_id, page, text = row
+        text = (text or "").strip()
+        if len(text) < 40:
+            continue
+        score = _score_eob_span(text)
+        scored.append((score, str(span_id), page, text))
+    scored.sort(key=lambda item: (-item[0], item[2], item[1]))
+    segments = []
+    used = set()
+    for score, span_id, page, text in scored:
+        if span_id in used:
+            continue
+        label = f"D{len(segments) + 1:03d}"
+        segments.append({
+            "label": label,
+            "span_id": span_id,
+            "document_id": document_id,
+            "doc_name": doc_name,
+            "page": page,
+            "text": text[:600],
+            "which": "denial"
+        })
+        used.add(span_id)
+        if len(segments) >= limit:
+            break
+    return segments
+
+
+def _render_denial_prompt(parsed: dict, segments: list[dict]) -> str:
+    parts = ["Denial data extracted:", json.dumps(parsed or {}, ensure_ascii=False, indent=2)]
+    parts.append("
+Document excerpts (cite with the bracketed labels):")
+    if segments:
+        for seg in segments:
+            parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
+    else:
+        parts.append("[No readable excerpts found]")
+    return "
+".join(parts)
+
+
 def run():
     print("Worker starting; listening on Redis LIST 'jobs'.")
     start_health_server()
@@ -550,6 +661,117 @@ def run():
                                 conn2.commit()
                         except Exception as inner:
                             print("[WORKER] unable to mark diff error:", inner)
+
+elif kind == "denial_explain":
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        continue
+    eob_id = eob_id
+    document_id = task.get("document_id")
+    child_id = task.get("child_id")
+    org_id = task.get("org_id")
+    if not eob_id or not document_id:
+        continue
+    try:
+        with psycopg.connect(db_url) as conn:
+            _set_org_context(conn, org_id)
+            eob_row = conn.execute(
+                "SELECT parsed_json FROM eobs WHERE id=%s",
+                (eob_id,)
+            ).fetchone()
+            parsed = eob_row[0] if eob_row else None
+            doc_info = conn.execute(
+                "SELECT original_name, type FROM documents WHERE id=%s",
+                (document_id,)
+            ).fetchone()
+            doc_name = None
+            if doc_info:
+                doc_name = doc_info[0] or doc_info[1]
+            doc_name = doc_name or "Denial Letter"
+
+            if not parsed:
+                conn.execute(
+                    """
+                    INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'error')
+                    ON CONFLICT (eob_id) DO UPDATE
+                      SET explanation_json = EXCLUDED.explanation_json,
+                          next_steps_json = EXCLUDED.next_steps_json,
+                          citations_json = EXCLUDED.citations_json,
+                          status = 'error',
+                          updated_at = NOW()
+                    """,
+                    (org_id, child_id, eob_id, document_id, Json({}), Json([]), Json([]))
+                )
+                conn.commit()
+                continue
+
+            segments = _select_eob_segments(conn, document_id, doc_name, limit=40)
+            label_map = {seg["label"]: seg for seg in segments}
+            prompt = _render_denial_prompt(parsed, segments)
+
+            client = _openai()
+            model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+            response = client.responses.create(
+                model=model,
+                input=[
+                    {"role": "system", "content": DENIAL_TRANSLATE_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_schema", "json_schema": DENIAL_TRANSLATE_SCHEMA}
+            )
+            raw = (response.output[0].content[0].text if response.output and response.output[0].content else None)
+            if not raw:
+                raise ValueError("empty denial explanation response")
+            data = json.loads(raw)
+            explanation_json = {
+                "overview": data.get("overview", ""),
+                "codes": data.get("codes") or [],
+                "appeal_recommended": bool(data.get("appeal_recommended")),
+                "appeal_reason": data.get("appeal_reason")
+            }
+            next_steps_json = data.get("next_steps") or []
+
+            _resolve_citations(explanation_json.get("codes"), label_map)
+            _resolve_citations(next_steps_json, label_map)
+
+            used_ids = set()
+            for collection in (explanation_json.get("codes") or []):
+                for span_id in collection.get("citations") or []:
+                    used_ids.add(span_id)
+            for step in next_steps_json or []:
+                for span_id in step.get("citations") or []:
+                    used_ids.add(span_id)
+
+            citations_json = _build_citation_entries(label_map, used_ids)
+
+            conn.execute(
+                """
+                INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'ready')
+                ON CONFLICT (eob_id) DO UPDATE
+                  SET explanation_json = EXCLUDED.explanation_json,
+                      next_steps_json = EXCLUDED.next_steps_json,
+                      citations_json = EXCLUDED.citations_json,
+                      status = 'ready',
+                      updated_at = NOW()
+                """,
+                (org_id, child_id, eob_id, document_id, Json(explanation_json), Json(next_steps_json), Json(citations_json))
+            )
+            conn.commit()
+    except Exception as e:
+        print("[WORKER] denial_explain failed:", e)
+        if db_url and eob_id:
+            try:
+                with psycopg.connect(os.getenv("DATABASE_URL")) as conn2:
+                    _set_org_context(conn2, org_id)
+                    conn2.execute(
+                        "UPDATE denial_explanations SET status='error', updated_at=NOW() WHERE eob_id=%s",
+                        (eob_id,)
+                    )
+                    conn2.commit()
+            except Exception as inner:
+                print("[WORKER] unable to mark denial explanation error:", inner)
             elif kind == "prep_recommendations":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:

@@ -82,6 +82,167 @@ export default async function routes(app: FastifyInstance) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const intentInfo = detectIntent(query);
 
+
+    if (intentInfo.intent === "denial.translate") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      const rows = await (prisma as any).$queryRawUnsafe(
+        `SELECT de.*, de.updated_at, e.document_id
+           FROM denial_explanations de
+           JOIN eobs e ON e.id = de.eob_id
+           JOIN claims c ON c.id = e.claim_id
+          WHERE c.child_id = $1
+          ORDER BY de.updated_at DESC
+          LIMIT 1`,
+        childId
+      );
+      const explanationRow = rows?.[0];
+
+      if (!explanationRow) {
+        const latestEob = await (prisma as any).$queryRawUnsafe(
+          `SELECT e.id as eob_id, e.document_id, c.org_id
+             FROM eobs e
+             JOIN claims c ON c.id = e.claim_id
+            WHERE c.child_id = $1
+            ORDER BY e.created_at DESC
+            LIMIT 1`,
+          childId
+        );
+        const candidate = latestEob?.[0];
+        if (candidate?.eob_id && candidate?.document_id) {
+          await enqueue({
+            kind: "denial_explain",
+            eob_id: candidate.eob_id,
+            document_id: candidate.document_id,
+            child_id: childId,
+            org_id: candidate.org_id || orgId,
+          });
+          await (prisma as any).denial_explanations.upsert({
+            where: { eob_id: candidate.eob_id },
+            update: { status: "pending" },
+            create: {
+              eob_id: candidate.eob_id,
+              document_id: candidate.document_id,
+              child_id: childId,
+              org_id: candidate.org_id || orgId,
+              explanation_json: {},
+              next_steps_json: [],
+              citations_json: [],
+              status: "pending",
+            },
+          });
+          return reply.send({
+            intent: intentInfo.intent,
+            answer: withDisclaimer("I'm reviewing that denial now. Give me a minute and open the appeal kit tab for the full breakdown."),
+            citations: [],
+            actions,
+            follow_ups: ["Open the appeal toolkit"],
+            summary: null,
+            artifacts: [],
+          });
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I couldn't find a denial yet. Upload the EOB or denial letter and I'll translate it."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload the denial"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (explanationRow.status === "pending") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I'm still translating that denial. Check back in a moment."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh denial explanation"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (explanationRow.status === "error") {
+        await enqueue({
+          kind: "denial_explain",
+          eob_id: explanationRow.eob_id,
+          document_id: explanationRow.document_id,
+          child_id: childId,
+          org_id: orgId,
+        });
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("The last translation hit an issue, so I'm running it again. I'll share the details shortly."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh denial explanation"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const explanationJson = (explanationRow as any).explanation_json || {};
+      const nextSteps = ((explanationRow as any).next_steps_json || []) as any[];
+      const citationsRaw = ((explanationRow as any).citations_json || []) as any[];
+
+      const lines: string[] = [];
+      const overview = explanationJson.overview || "Here's what I found.";
+      lines.push(overview);
+      const codes = Array.isArray(explanationJson.codes) ? explanationJson.codes : [];
+      if (codes.length) {
+        const details = codes
+          .slice(0, 3)
+          .map((item: any) => {
+            const label = item?.code ? `${item.code}: ` : "";
+            return `${label}${item?.plain_language || "Coverage code"}`;
+          })
+          .join("\n- ");
+        lines.push(`Codes:
+- ${details}`);
+      }
+      if (nextSteps.length) {
+        const steps = nextSteps
+          .slice(0, 3)
+          .map((item: any) => `- ${item?.action || "Follow up"}: ${item?.details || ""}`)
+          .join("\n");
+        lines.push(`Next steps:
+${steps}`);
+      }
+      if (explanationJson.appeal_recommended) {
+        lines.push(explanationJson.appeal_reason ? `Consider appealing: ${explanationJson.appeal_reason}` : "This denial looks appealable - let's start a kit.");
+      }
+      lines.push("Open the appeal kit tab if you want Joslyn to start drafting paperwork.");
+
+      const answerText = lines.join("\n\n");
+      const citationsPayload = citationsRaw.map((c: any, idx: number) => ({
+        index: idx + 1,
+        document_id: c?.document_id,
+        doc_name: c?.doc_name,
+        page: c?.page,
+        snippet: c?.snippet,
+      }));
+
+      const followUps = explanationJson.appeal_recommended
+        ? ["Start an appeal kit", "Draft a response letter"]
+        : ["What should I say to the insurer?", "Show me supporting evidence"];
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(answerText),
+        citations: citationsPayload,
+        actions,
+        follow_ups: followUps,
+        summary: overview,
+        artifacts: [],
+      });
+    }
+
     if (intentInfo.intent === "iep.diff") {
       const diff = await (prisma as any).iep_diffs.findFirst({
         where: { child_id: childId },
