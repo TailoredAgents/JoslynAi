@@ -2,35 +2,65 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useBootstrappedChild } from "../../lib/use-child";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
 const SUGGESTIONS = [
-  "List services & minutes",
-  "Show speech therapy goals",
-  "Draft recap email"
+  "Compare the last two IEPs and flag risks",
+  "Recommend accommodations from recent evaluations",
+  "Explain this denial and what to do next"
 ];
 
-type ChatMessage = {
-  role: "user" | "assistant";
+type CopilotCitation = {
+  index: number;
+  document_id: string;
+  doc_name?: string;
+  page?: number;
+  snippet?: string;
+};
+
+type CopilotAction = {
+  type: string;
+  label: string;
+  href?: string;
+};
+
+type AssistantMessage = {
+  role: "assistant";
+  answer: string;
+  intent: string;
+  citations: CopilotCitation[];
+  actions: CopilotAction[];
+  followUps: string[];
+  summary?: string | null;
+};
+
+type UserMessage = {
+  role: "user";
   content: string;
 };
 
+type ChatMessage = UserMessage | AssistantMessage;
+
 export default function CopilotPage() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [question, setQuestion] = useState("What services are in this IEP?");
+  const [question, setQuestion] = useState("What changed in the latest IEP?");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [thinking, setThinking] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
 
   const { child, loading: childLoading, error: childError, refresh: refreshChild } = useBootstrappedChild();
-  const childId = child?.id ?? null;\r\n  const childReady = Boolean(childId);
+  const childId = child?.id ?? null;
+  const childReady = Boolean(childId);
 
   useEffect(() => {
-    if (!childId) return;
-    pollJobs(childId);
+    const currentId = childId;
+    if (!currentId) return;
+    pollJobs(currentId);
   }, [childId]);
 
   async function pollJobs(targetId?: string) {
@@ -67,31 +97,111 @@ export default function CopilotPage() {
     const query = (prompt ?? question).trim();
     if (!query || !childId) return;
     setMessages((prev) => [...prev, { role: "user", content: query }]);
-    if (!prompt) {
-      setQuestion("");
-    }
+    if (!prompt) setQuestion("");
     setThinking(true);
     try {
-      const res = await fetch(`${API_BASE}/children/${childId}/ask`, {
+      const res = await fetch(`${API_BASE}/copilot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ child_id: childId, query })
       });
+      if (!res.ok) {
+        throw new Error(`Copilot request failed (${res.status})`);
+      }
       const data = await res.json();
-      const answer = data?.answer ?? "I wasn't able to find that just yet.";
-      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      const assistant: AssistantMessage = {
+        role: "assistant",
+        answer: data?.answer ?? "I wasn't able to find that just yet.",
+        intent: data?.intent ?? "general.ask",
+        citations: Array.isArray(data?.citations) ? data.citations : [],
+        actions: Array.isArray(data?.actions) ? data.actions : [],
+        followUps: Array.isArray(data?.follow_ups) ? data.follow_ups : [],
+        summary: typeof data?.summary === "string" ? data.summary : null
+      };
+      setMessages((prev) => [...prev, assistant]);
     } catch (err) {
       console.error(err);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "I hit a snag reaching Joslyn AI. Try again in a moment."
+          answer: "I hit a snag reaching Joslyn AI. Try again in a moment.",
+          intent: "error",
+          citations: [],
+          actions: [],
+          followUps: [],
+          summary: null
         }
       ]);
     } finally {
       setThinking(false);
     }
+  }
+
+  function handleAction(action: CopilotAction) {
+    if (action.type === "open_tab" && action.href) {
+      router.push(action.href);
+    }
+  }
+
+  function renderAssistant(message: AssistantMessage) {
+    return (
+      <div className="space-y-3">
+        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">{message.answer}</p>
+        {message.summary ? (
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            <span className="font-semibold text-slate-600">TL;DR:</span> {message.summary}
+          </div>
+        ) : null}
+        {message.citations.length ? (
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            <p className="mb-2 font-semibold text-slate-600">Citations</p>
+            <ul className="space-y-2">
+              {message.citations.map((c) => (
+                <li key={c.index}>
+                  <span className="font-semibold text-brand-600">[{c.index}]</span>
+                  <span className="font-medium text-slate-600"> {c.doc_name || "Document"}</span>
+                  {c.page ? <span className="text-slate-500"> (p.{c.page})</span> : null}
+                  {c.snippet ? <p className="mt-1 text-[11px] text-slate-500">"{c.snippet}"</p> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {message.actions.length ? (
+          <div className="flex flex-wrap gap-2">
+            {message.actions.map((action, idx) => (
+              <button
+                key={`${action.label}-${idx}`}
+                type="button"
+                onClick={() => handleAction(action)}
+                className="inline-flex items-center rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 shadow-sm transition hover:border-brand-400 hover:text-brand-700"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {message.followUps.length ? (
+          <div className="rounded-2xl bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
+            <p className="font-semibold text-slate-600">Try asking next:</p>
+            <ul className="mt-2 space-y-1">
+              {message.followUps.map((prompt, idx) => (
+                <li key={idx}>
+                  <button
+                    type="button"
+                    className="text-left text-brand-600 underline decoration-dotted hover:text-brand-700"
+                    onClick={() => askCopilot(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   const jobSummary = useMemo(
@@ -146,7 +256,7 @@ export default function CopilotPage() {
               <button
                 type="button"
                 className="text-xs font-semibold text-slate-500 transition hover:text-brand-600"
-                onClick={() => pollJobs(childId)}
+                onClick={() => pollJobs(childId ?? undefined)}
               >
                 Refresh jobs
               </button>
@@ -161,14 +271,18 @@ export default function CopilotPage() {
                   {messages.map((msg, idx) => (
                     <li
                       key={idx}
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${msg.role === "user" ? "ml-auto bg-brand-500 text-white" : "bg-white text-slate-700"}`}
+                      className={`max-w-[90%] rounded-2xl px-4 py-3 shadow-sm ${msg.role === "user" ? "ml-auto bg-brand-500 text-white" : "bg-white text-slate-700"}`}
                     >
-                      {msg.content}
+                      {msg.role === "user" ? (
+                        <span className="whitespace-pre-line text-sm leading-relaxed">{msg.content}</span>
+                      ) : (
+                        renderAssistant(msg as AssistantMessage)
+                      )}
                     </li>
                   ))}
                   {thinking && (
                     <li className="max-w-[60%] rounded-2xl bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
-                                            Joslyn AI is thinking�
+                                            Joslyn AI is thinking...
                     </li>
                   )}
                 </ul>
@@ -244,9 +358,9 @@ export default function CopilotPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Sample prompts</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>- What is an IEP and why does it matter?</li>
-              <li>- How can I prepare for my child's next IEP meeting?</li>
-              <li>- What supports help during sensory overload?</li>
+              <li>- Compare the last two IEPs and highlight changes.</li>
+              <li>- Draft a mediation outline for reduced OT minutes.</li>
+              <li>- Build an appeal kit for the Aetna OT denial.</li>
             </ul>
           </div>
         </aside>

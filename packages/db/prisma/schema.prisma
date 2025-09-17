@@ -73,6 +73,169 @@ model IepExtract {
   @@index([org_id])
 }
 
+model iep_diffs {
+  id                   String   @id @default(uuid()) @db.Uuid
+  org_id               String?  @db.Uuid
+  child_id             String
+  latest_document_id   String
+  previous_document_id String?
+  diff_json            Json
+  risk_flags_json      Json?
+  citations_json       Json?
+  status               String   @default("ready")
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  @@index([org_id, child_id])
+  @@index([latest_document_id])
+  @@unique([latest_document_id])
+}
+
+model recommendations {
+  id                    String   @id @default(uuid()) @db.Uuid
+  org_id                String?  @db.Uuid
+  child_id              String
+  source_kind           String   @default("auto")
+  request_hash          String?
+  recommendations_json  Json
+  citations_json        Json?
+  locale                String?  @default("en")
+  status                String   @default("ready")
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@index([org_id, child_id])
+  @@index([request_hash])
+  @@unique([child_id, source_kind])
+}
+
+model denial_explanations {
+  id               String   @id @default(uuid()) @db.Uuid
+  org_id           String?  @db.Uuid
+  child_id         String?
+  eob_id           String?
+  document_id      String?
+  explanation_json Json
+  next_steps_json  Json?
+  citations_json   Json?
+  status           String   @default("ready")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([org_id, child_id])
+  @@index([eob_id])
+}
+
+model goal_rewrites {
+  id               String   @id @default(uuid()) @db.Uuid
+  org_id           String?  @db.Uuid
+  child_id         String?
+  document_id      String?
+  goal_identifier  String
+  rubric_json      Json
+  rewrite_json     Json
+  citations_json   Json?
+  status           String   @default("draft")
+  confirmed_at     DateTime?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([org_id, child_id])
+  @@index([document_id, goal_identifier])
+}
+
+model advocacy_outlines {
+  id             String   @id @default(uuid()) @db.Uuid
+  org_id         String?  @db.Uuid
+  child_id       String?
+  outline_kind   String   @default("mediation")
+  outline_json   Json
+  citations_json Json?
+  status         String   @default("draft")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([org_id, child_id, outline_kind])
+}
+
+model research_summaries {
+  id             String   @id @default(uuid()) @db.Uuid
+  org_id         String?  @db.Uuid
+  document_id    String
+  summary_json   Json
+  glossary_json  Json?
+  citations_json Json?
+  reading_level  String?
+  status         String   @default("ready")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@unique([document_id])
+  @@index([org_id])
+}
+
+model appeal_kits {
+  id             String   @id @default(uuid()) @db.Uuid
+  org_id         String?  @db.Uuid
+  child_id       String?
+  denial_id      String?
+  status         String   @default("draft")
+  deadline_date  DateTime?
+  metadata_json  Json?
+  checklist_json Json?
+  citations_json Json?
+  packet_uri     String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([org_id, child_id])
+}
+
+model appeal_kit_items {
+  id             String   @id @default(uuid()) @db.Uuid
+  org_id         String?  @db.Uuid
+  appeal_kit_id  String
+  kind           String
+  status         String   @default("pending")
+  payload_json   Json
+  citations_json Json?
+  order_index    Int      @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([appeal_kit_id, kind])
+}
+
+model one_pagers {
+  id                 String   @id @default(uuid()) @db.Uuid
+  org_id             String?  @db.Uuid
+  child_id           String
+  audience           String
+  language_primary   String   @default("en")
+  language_secondary String?
+  content_json       Json
+  citations_json     Json?
+  status             String   @default("draft")
+  share_link_id      String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([org_id, child_id, audience])
+}
+
+model safety_phrases {
+  id            String   @id @default(uuid()) @db.Uuid
+  org_id        String?  @db.Uuid
+  tag           String
+  contexts      String[] @default([])
+  content_json  Json
+  status        String   @default("active")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([org_id, tag])
+}
+
 // Phase 2 additions
 
 model timeline_rules {
@@ -206,13 +369,18 @@ model glossaries {
 }
 
 model share_links {
-  id            String   @id @default(uuid()) @db.Uuid
-  org_id        String
-  resource_type String
-  resource_id   String
-  token         String   @unique
-  expires_at    DateTime?
-  created_at    DateTime @default(now())
+  id               String   @id @default(uuid()) @db.Uuid
+  org_id           String
+  resource_type    String
+  resource_subtype String? @default("default")
+  resource_id      String
+  token            String   @unique
+  password_hash    String?
+  meta_json        Json?
+  expires_at       DateTime?
+  created_at       DateTime @default(now())
+
+  @@index([org_id, resource_type, resource_subtype])
 }
 
 model child_profile {

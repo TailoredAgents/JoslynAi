@@ -3,6 +3,25 @@ import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import QRCode from "qrcode";
 import { orgIdFromRequest } from "../lib/child.js";
+import crypto from "node:crypto";
+
+function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derived = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `scrypt:${salt}:${derived}`;
+}
+
+function verifyPassword(stored: string, attempt: string) {
+  if (!stored) return true;
+  const [algo, salt, reference] = stored.split(":");
+  if (algo !== "scrypt" || !salt || !reference) return false;
+  const derived = crypto.scryptSync(attempt, salt, 64).toString("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(reference, "hex"), Buffer.from(derived, "hex"));
+  } catch {
+    return false;
+  }
+}
 
 export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>("/children/:id/profile/save", async (req, reply) => {
@@ -19,7 +38,7 @@ export default async function routes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>("/children/:id/profile/render", async (req, reply) => {
     const child_id = (req.params as any).id;
-    const { lang1 = "en", lang2 = "es" } = (req.body as any) || {};
+    const { lang1 = "en", lang2 = "es", password } = (req.body as any) || {};
     const org_id = orgIdFromRequest(req as any);
     const row = await (prisma as any).child_profile.findFirst({ where: { child_id } });
     if (!row) return reply.status(400).send({ error: "profile not found" });
@@ -64,27 +83,73 @@ export default async function routes(app: FastifyInstance) {
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
 
-    // share link
     const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-    await (prisma as any).share_links.create({ data: { org_id, resource_type: "profile", resource_id: child_id, token } });
+    const password_hash = password ? hashPassword(password) : undefined;
+    await (prisma as any).share_links.create({
+      data: {
+        org_id,
+        resource_type: "profile",
+        resource_subtype: "profile_overview",
+        resource_id: child_id,
+        token,
+        password_hash,
+        meta_json: {
+          allowed_fields: fields,
+          version: "profile_v1",
+          child_id,
+          languages: { primary: lang1, secondary: lang2 }
+        }
+      }
+    });
     const base = process.env.PUBLIC_BASE_URL || "http://localhost:8080";
     const share_url = `${base}/share/${token}`;
     const qr_base64 = await QRCode.toDataURL(share_url);
 
-    // audit event
-    await (prisma as any).events.create({ data: { org_id, type: "profile_render", payload_json: { child_id, pdfKey } } });
+    await (prisma as any).events.create({ data: { org_id, type: "profile_render", payload_json: { child_id, pdfKey, share_url } } });
 
-    return reply.send({ pdf_uri: pdfKey, share_url, qr_base64 });
+    return reply.send({ pdf_uri: pdfKey, share_url, qr_base64, password_required: Boolean(password) });
   });
 
-  app.get<{ Params: { token: string } }>("/share/:token", async (req, reply) => {
+  app.get<{ Params: { token: string }, Querystring: { password?: string } }>("/share/:token", async (req, reply) => {
     const token = (req.params as any).token;
     const link = await (prisma as any).share_links.findUnique({ where: { token } });
-    if (!link) return reply.status(404).send({ error: "not found" });
+    if (!link) return reply.status(404).send({ error: "not_found" });
     if (link.resource_type !== "profile") return reply.status(400).send({ error: "unsupported" });
+    if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
+      return reply.status(410).send({ error: "expired" });
+    }
+
+    const providedPassword = ((req.query as any)?.password || req.headers["x-share-password"]) as string | undefined;
+    if (link.password_hash) {
+      if (!providedPassword || !verifyPassword(link.password_hash, providedPassword)) {
+        return reply.status(403).send({ error: "password_required" });
+      }
+    }
+
     const prof = await (prisma as any).child_profile.findFirst({ where: { child_id: link.resource_id } });
-    return reply.send(prof?.profile_json || {});
+    if (!prof) return reply.status(404).send({ error: "profile_not_found" });
+
+    const meta = (link as any).meta_json || {};
+    const allowed = Array.isArray(meta?.allowed_fields) ? meta.allowed_fields : undefined;
+    const fullProfile = prof.profile_json || {};
+    const scoped: Record<string, any> = {};
+    if (allowed && allowed.length) {
+      for (const key of allowed) {
+        if (key in fullProfile) scoped[key] = fullProfile[key];
+      }
+    } else {
+      Object.assign(scoped, fullProfile);
+    }
+
+    return reply.send({
+      profile: scoped,
+      meta: {
+        allowed_fields: allowed || Object.keys(scoped),
+        resource_subtype: link.resource_subtype,
+        resource_type: link.resource_type,
+        expires_at: link.expires_at,
+        version: meta?.version || "profile_v1"
+      }
+    });
   });
 }
-
-
