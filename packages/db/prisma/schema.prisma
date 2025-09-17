@@ -26,6 +26,7 @@ model Children {
 model Documents {
   id          String   @id @default(uuid()) @db.Uuid
   child_id    String   @db.Uuid
+  org_id      String?  @db.Uuid
   type        String
   storage_uri String
   sha256      String
@@ -36,11 +37,13 @@ model Documents {
   created_at  DateTime @default(now())
 
   @@map("documents")
+  @@index([org_id])
 }
 
 model DocSpan {
   id           String   @id @default(uuid()) @db.Uuid
   document_id  String   @db.Uuid
+  org_id       String?  @db.Uuid
   page         Int
   // Prefer numeric bbox: [x, y, w, h] in page coordinates
   bbox         Float[] @default([])
@@ -50,11 +53,13 @@ model DocSpan {
   created_at   DateTime @default(now())
 
   @@map("doc_spans")
+  @@index([org_id])
 }
 
 model IepExtract {
   id                   String   @id @default(uuid()) @db.Uuid
   document_id          String   @unique @db.Uuid
+  org_id               String?  @db.Uuid
   services_json        Json
   goals_json           Json
   accommodations_json  Json
@@ -65,6 +70,7 @@ model IepExtract {
   created_at           DateTime @default(now())
 
   @@map("iep_extract")
+  @@index([org_id])
 }
 
 // Phase 2 additions
@@ -87,17 +93,21 @@ model timeline_rules {
 model deadlines {
   id            String   @id @default(uuid()) @db.Uuid
   child_id      String
+  org_id        String?  @db.Uuid
   kind          String
   base_date     DateTime
   due_date      DateTime
   jurisdiction  String
   source_doc_id String?
   created_at    DateTime @default(now())
+
+  @@index([org_id, child_id])
 }
 
 model letters {
   id          String   @id @default(uuid()) @db.Uuid
   child_id    String
+  org_id      String?  @db.Uuid
   kind        String
   status      String   @default("draft")
   draft_json  Json
@@ -105,28 +115,35 @@ model letters {
   sent_via    String?
   sent_at     DateTime?
   created_at  DateTime @default(now())
+
+  @@index([org_id, child_id])
 }
 
 model claims {
   id                   String   @id @default(uuid()) @db.Uuid
   child_id             String
+  org_id               String?  @db.Uuid
   service_date         DateTime?
   provider             String?
   amounts_json         Json?
   status               String   @default("open")
   linked_document_ids  Json?
   created_at           DateTime @default(now())
+
+  @@index([org_id, child_id])
 }
 
 model eobs {
   id             String   @id @default(uuid()) @db.Uuid
   claim_id       String
   document_id    String
+  org_id         String?  @db.Uuid
   parsed_json    Json?
   explanation_text String?
   created_at     DateTime @default(now())
 
   @@unique([document_id])
+  @@index([org_id])
 }
 
 model next_best_steps {
@@ -201,9 +218,12 @@ model share_links {
 model child_profile {
   id          String   @id @default(uuid()) @db.Uuid
   child_id    String
+  org_id      String?  @db.Uuid
   profile_json Json
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
+
+  @@index([org_id, child_id])
 }
 
 model events {
@@ -261,6 +281,7 @@ model users {
 model job_runs {
   id           String   @id @default(uuid()) @db.Uuid
   child_id     String
+  org_id       String?  @db.Uuid
   type         String   // "upload" | "ocr" | "index" | "extract" | ... (current stage)
   status       String   // "pending" | "processing" | "done" | "failed"
   error_text   String?
@@ -269,4 +290,5 @@ model job_runs {
   updated_at   DateTime @updatedAt
 
   @@index([child_id, created_at])
+  @@index([org_id, child_id, created_at])
 }

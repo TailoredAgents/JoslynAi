@@ -58,3 +58,51 @@ ON CONFLICT (slug) DO NOTHING;
 INSERT INTO entitlements (id, org_id, plan, features_json)
 VALUES (gen_random_uuid(), 'demo-org', 'pro', '{"ask":true,"smart_attachments":true,"letters":{"render":true,"send":true},"brief":true}')
 ON CONFLICT (org_id) DO NOTHING;
+
+-- Backfill org_id columns for multi-tenant hardening (idempotent)
+-- These statements are safe to run multiple times and only fill NULLs
+UPDATE documents d
+SET org_id = c.org_id
+FROM children c
+WHERE d.child_id = c.id AND d.org_id IS NULL;
+
+UPDATE doc_spans s
+SET org_id = d.org_id
+FROM documents d
+WHERE s.document_id = d.id AND s.org_id IS NULL;
+
+UPDATE iep_extract i
+SET org_id = d.org_id
+FROM documents d
+WHERE i.document_id = d.id AND i.org_id IS NULL;
+
+UPDATE deadlines dl
+SET org_id = c.org_id
+FROM children c
+WHERE dl.child_id = c.id AND dl.org_id IS NULL;
+
+UPDATE letters l
+SET org_id = c.org_id
+FROM children c
+WHERE l.child_id = c.id AND l.org_id IS NULL;
+
+UPDATE claims cl
+SET org_id = c.org_id
+FROM children c
+WHERE cl.child_id = c.id AND cl.org_id IS NULL;
+
+UPDATE eobs e
+SET org_id = COALESCE(cl.org_id, d.org_id)
+FROM claims cl
+LEFT JOIN documents d ON d.id = e.document_id
+WHERE e.claim_id = cl.id AND e.org_id IS NULL;
+
+UPDATE child_profile p
+SET org_id = c.org_id
+FROM children c
+WHERE p.child_id = c.id AND p.org_id IS NULL;
+
+UPDATE job_runs j
+SET org_id = c.org_id
+FROM children c
+WHERE j.child_id = c.id AND j.org_id IS NULL;
