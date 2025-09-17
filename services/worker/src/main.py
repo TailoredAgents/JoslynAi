@@ -75,6 +75,11 @@ def run():
                 try:
                     db_url = os.getenv("DATABASE_URL")
                     with psycopg.connect(db_url) as conn:
+                        try:
+                            org = task.get("org_id")
+                            conn.execute("SELECT set_config('request.jwt.org_id', %s, true)", (org,))
+                        except Exception:
+                            pass
                         conn.execute("UPDATE documents SET doc_tags=%s WHERE id=%s", (tags, task.get("document_id")))
                         conn.commit()
                 except Exception as e:
@@ -86,6 +91,11 @@ def run():
                 try:
                     db_url = os.getenv("DATABASE_URL")
                     with psycopg.connect(db_url) as conn:
+                        try:
+                            org = task.get("org_id")
+                            conn.execute("SELECT set_config('request.jwt.org_id', %s, true)", (org,))
+                        except Exception:
+                            pass
                         row = conn.execute("SELECT type FROM documents WHERE id=%s", (task.get("document_id"),)).fetchone()
                         if row and isinstance(row[0], str) and 'eob' in row[0].lower():
                             patch_job(job_id, "extract", "processing")

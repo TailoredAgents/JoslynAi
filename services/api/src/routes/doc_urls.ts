@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import { signedGetUrl } from "../lib/s3.js";
+import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { id: string }, Querystring: { ttl?: string } }>(
@@ -23,7 +24,8 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { childId: string } }>("/profiles/:childId/url", async (req, reply) => {
-    const key = `profiles/${(req.params as any).childId}.pdf`;
+    const orgId = orgIdFromRequest(req as any);
+    const key = `org/${orgId}/profiles/${(req.params as any).childId}.pdf`;
     const url = await signedGetUrl(key, 900);
     return reply.send({ url });
   });

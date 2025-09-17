@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
+import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/eligibility/screener", async (req, reply) => {
@@ -25,7 +26,8 @@ export default async function routes(app: FastifyInstance) {
     (doc as any).end();
     await new Promise((res) => stream.on("finish", res));
     const { putObject } = await import("../lib/s3");
-    const pdfKey = `forms/${id}.pdf`;
+    const orgId = orgIdFromRequest(req as any);
+    const pdfKey = `org/${orgId}/forms/${id}.pdf`;
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
     return reply.send({ pdf_uri: pdfKey });

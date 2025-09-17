@@ -72,10 +72,12 @@ export default async function routes(app: FastifyInstance) {
     await new Promise((res) => stream.on("finish", res));
 
     const { putObject } = await import("../lib/s3");
-    await putObject(`letters/${letter_id}.pdf`, fs2.readFileSync(tmp), "application/pdf");
+    const orgId = (letter as any).org_id || (req as any).orgId || null;
+    const key = `org/${orgId || 'unknown'}/letters/${letter_id}.pdf`;
+    await putObject(key, fs2.readFileSync(tmp), "application/pdf");
 
-    await (prisma as any).letters.update({ where: { id: letter_id }, data: { pdf_uri: `letters/${letter_id}.pdf` } });
-    return reply.send({ pdf_uri: `letters/${letter_id}.pdf` });
+    await (prisma as any).letters.update({ where: { id: letter_id }, data: { pdf_uri: key } });
+    return reply.send({ pdf_uri: key });
   });
 
   app.post("/tools/letter/send", async (req, reply) => {

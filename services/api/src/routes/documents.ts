@@ -31,7 +31,7 @@ export default async function routes(fastify: FastifyInstance) {
     const buf = Buffer.concat(chunks);
 
     const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
-    const key = `${childId}/${Date.now()}_${data.filename}`;
+    const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
 
     await putObject(key, buf, data.mimetype);
 
@@ -57,7 +57,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     // dedupe by sha256+child
     if (!documentId) {
-      const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256 } }).catch(()=>null);
+      const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256, org_id: orgId } }).catch(()=>null);
       if (existing?.id) {
         return reply.send({ document_id: existing.id, storage_key: existing.storage_uri });
       }
@@ -96,7 +96,7 @@ export default async function routes(fastify: FastifyInstance) {
       jobId = job?.id || null;
     } catch {}
 
-    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, filename: data.filename, job_id: jobId });
+    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, org_id: orgId, filename: data.filename, job_id: jobId });
 
     return reply.send({ document_id: documentId, storage_key: key, job_id: jobId });
   });

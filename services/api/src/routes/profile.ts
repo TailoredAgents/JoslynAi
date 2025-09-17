@@ -59,7 +59,8 @@ export default async function routes(app: FastifyInstance) {
     await new Promise((res) => stream.on("finish", res));
 
     const { putObject } = await import("../lib/s3");
-    const pdfKey = `profiles/${child_id}.pdf`;
+    const org_id = orgIdFromRequest(req as any);
+    const pdfKey = `org/${org_id}/profiles/${child_id}.pdf`;
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
 

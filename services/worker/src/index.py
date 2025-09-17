@@ -68,6 +68,11 @@ def embed_and_store(task: dict):
     try:
         if DB_URL:
             with psycopg.connect(DB_URL) as conn:
+                try:
+                    org = task.get("org_id")
+                    conn.execute("SELECT set_config('request.jwt.org_id', %s, true)", (org,))
+                except Exception:
+                    pass
                 cnt = conn.execute("SELECT COUNT(*) FROM doc_spans WHERE document_id=%s", (document_id,)).fetchone()[0]
                 if cnt and cnt > 0:
                     print("[INDEX] Spans already exist; skipping embed")
@@ -145,6 +150,11 @@ def embed_and_store(task: dict):
 
     _patch_job(job_id, "index", "processing")
     with psycopg.connect(DB_URL) as conn:
+        try:
+            org = task.get("org_id")
+            conn.execute("SELECT set_config('request.jwt.org_id', %s, true)", (org,))
+        except Exception:
+            pass
         with conn.cursor() as cur:
             for idx, (vec, m, text) in enumerate(zip(vectors, meta, chunks)):
                 vec_lit = "ARRAY[" + ",".join(str(x) for x in vec) + "]::vector"
@@ -157,10 +167,10 @@ def embed_and_store(task: dict):
                     bbox_arr = f"ARRAY[{x0},{y0},{(x1 - x0)},{(y1 - y0)}]::float8[]"
                 cur.execute(
                     f"""
-                    INSERT INTO doc_spans (document_id, page, bbox, page_width, page_height, text, embedding)
-                    VALUES (%s, %s, {bbox_arr if bbox_arr else 'NULL'}, %s, %s, %s, {vec_lit})
+                    INSERT INTO doc_spans (document_id, org_id, page, bbox, page_width, page_height, text, embedding)
+                    VALUES (%s, %s, %s, {bbox_arr if bbox_arr else 'NULL'}, %s, %s, %s, {vec_lit})
                     """,
-                    (document_id, m["page"], pw, ph, text[:4000])
+                    (document_id, task.get("org_id"), m["page"], pw, ph, text[:4000])
                 )
         try:
             conn.execute("UPDATE documents SET processed_at = NOW() WHERE id=%s", (document_id,))
