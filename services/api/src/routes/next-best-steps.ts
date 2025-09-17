@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
+import { orgIdFromRequest } from "../lib/child.js";
 import crypto from "node:crypto";
 
 export default async function routes(app: FastifyInstance) {
@@ -15,6 +16,7 @@ export default async function routes(app: FastifyInstance) {
 
   app.post("/next-best-steps/generate", async (req, reply) => {
     const { child_id } = (req.body as any);
+    const org_id = orgIdFromRequest(req as any);
     const created: any[] = [];
     const now = Date.now();
     // (1) deadlines due within 14 days
@@ -29,9 +31,25 @@ export default async function routes(app: FastifyInstance) {
       });
       created.push(row);
     }
-    // (2) EOB denial and no appeal letter sent
-    const eob = await (prisma as any).eobs.findMany({});
-    if (eob.length) {
+    // (2) EOB denial scoped to this child/org
+    let hasDenial = false;
+    try {
+      const claims = await (prisma as any).claims.findMany({
+        where: { child_id, org_id },
+        select: { id: true },
+      });
+      const claimIds = (claims || []).map((c: any) => c.id).filter(Boolean);
+      if (claimIds.length) {
+        const eobs = await (prisma as any).eobs.findMany({
+          where: { claim_id: { in: claimIds }, org_id },
+        });
+        hasDenial = (eobs || []).some((e: any) => {
+          const reason = (e as any)?.parsed_json?.denial_reason;
+          return reason != null && String(reason).trim().length > 0;
+        });
+      }
+    } catch {}
+    if (hasDenial) {
       const payload = { action: "appeal_packet" };
       const key = crypto.createHash('sha1').update(`${child_id}:appeal_recommended:${JSON.stringify(payload)}`).digest('hex');
       const row = await (prisma as any).next_best_steps.upsert({

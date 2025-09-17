@@ -20,6 +20,7 @@ export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>("/children/:id/profile/render", async (req, reply) => {
     const child_id = (req.params as any).id;
     const { lang1 = "en", lang2 = "es" } = (req.body as any) || {};
+    const org_id = orgIdFromRequest(req as any);
     const row = await (prisma as any).child_profile.findFirst({ where: { child_id } });
     if (!row) return reply.status(400).send({ error: "profile not found" });
 
@@ -59,21 +60,19 @@ export default async function routes(app: FastifyInstance) {
     await new Promise((res) => stream.on("finish", res));
 
     const { putObject } = await import("../lib/s3");
-    const org_id = orgIdFromRequest(req as any);
     const pdfKey = `org/${org_id}/profiles/${child_id}.pdf`;
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
 
     // share link
     const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-    const org_id = orgIdFromRequest(req as any);
     await (prisma as any).share_links.create({ data: { org_id, resource_type: "profile", resource_id: child_id, token } });
     const base = process.env.PUBLIC_BASE_URL || "http://localhost:8080";
     const share_url = `${base}/share/${token}`;
     const qr_base64 = await QRCode.toDataURL(share_url);
 
     // audit event
-    await (prisma as any).events.create({ data: { org_id: "demo-org", type: "profile_render", payload_json: { child_id, pdfKey } } });
+    await (prisma as any).events.create({ data: { org_id, type: "profile_render", payload_json: { child_id, pdfKey } } });
 
     return reply.send({ pdf_uri: pdfKey, share_url, qr_base64 });
   });
