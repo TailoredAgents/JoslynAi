@@ -25,7 +25,7 @@ function rrfFuse(lex: Span[], vec: Span[], k = 60, top = 12): Span[] {
     .slice(0, top);
 }
 
-export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12, docId?: string) {
+export async function retrieveForAsk(prisma: any, openai: any, childId: string, query: string, top = 12, docId?: string): Promise<Span[]> {
   if (!isUuid(childId)) {
     return [];
   }

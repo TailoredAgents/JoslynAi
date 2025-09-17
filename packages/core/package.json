@@ -12,12 +12,18 @@
         },
         "./llm/openai": "./dist/llm/openai.js",
         "./llm/usage": "./dist/llm/usage.js",
-        "./rag/retriever": "./dist/rag/retriever.js",
+        "./rag/retriever": {
+            "types": "./dist/rag/retriever.d.ts",
+            "default": "./dist/rag/retriever.js"
+        },
         "./smart_attachments/*": "./dist/smart_attachments/*.js",
         "./schemas/*": "./schemas/*",
         "./prompts/*": "./prompts/*",
         "./agent/orchestrator": "./dist/agent/orchestrator.js",
-        "./rag/citations": "./dist/rag/citations.js"
+        "./rag/citations": {
+            "types": "./dist/rag/citations.d.ts",
+            "default": "./dist/rag/citations.js"
+        }
     },
     "scripts": {
         "build": "tsc -p tsconfig.json",

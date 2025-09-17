@@ -3,7 +3,7 @@ import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
-import { normalizeAndLimit } from "@joslyn-ai/core/rag/citations";
+import { normalizeAndLimit, type CitationGroup } from "@joslyn-ai/core/rag/citations";
 import { safeResponsesCreate } from "../lib/openai.js";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 
@@ -18,6 +18,17 @@ function withDisclaimer(answer: string): string {
 
 ${DISCLAIMER}`;
 }
+
+type UsedSpan = { index: number; document_id: string; doc_name?: string; page?: number; text: string };
+
+type RetrievedSpan = {
+  id: string;
+  document_id: string;
+  doc_name: string;
+  page: number;
+  text: string;
+  [key: string]: any;
+};
 
 function detectIntent(query: string): { intent: string; tags: string[]; actions: Array<{ type: string; label: string; href?: string }> } {
   const normalized = (query || "").toLowerCase();
@@ -69,11 +80,11 @@ export default async function routes(app: FastifyInstance) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const intentInfo = detectIntent(query);
-    const spans = await retrieveForAsk(prisma as any, openai, childId, query, 18);
+    const spans = (await retrieveForAsk(prisma as any, openai, childId, query, 18)) as RetrievedSpan[];
 
     const docLookup: Record<string, string[]> = {};
     if (spans.length) {
-      const ids = Array.from(new Set(spans.map((s) => s.document_id))).filter(Boolean);
+      const ids = Array.from(new Set(spans.map((s: RetrievedSpan) => s.document_id))).filter(Boolean);
       if (ids.length) {
         const docs = await (prisma as any).documents.findMany({ where: { id: { in: ids } }, select: { id: true, doc_tags: true } });
         for (const doc of docs) {
@@ -82,19 +93,19 @@ export default async function routes(app: FastifyInstance) {
       }
     }
 
-    let grouped = normalizeAndLimit(spans, {
+    let grouped = normalizeAndLimit<RetrievedSpan>(spans, {
       tags: docLookup,
       allowedTags: intentInfo.tags,
       maxPerDocument: 2,
       maxTotal: 6
     });
     if (!grouped.length) {
-      grouped = normalizeAndLimit(spans, { maxPerDocument: 2, maxTotal: 6 });
+      grouped = normalizeAndLimit<RetrievedSpan>(spans, { maxPerDocument: 2, maxTotal: 6 });
     }
 
-    const flattened: { index: number; document_id: string; doc_name?: string; page?: number; text: string }[] = [];
-    grouped.forEach((group) => {
-      group.spans.forEach((span) => {
+    const flattened: UsedSpan[] = [];
+    grouped.forEach((group: CitationGroup<RetrievedSpan>) => {
+      group.spans.forEach((span: RetrievedSpan) => {
         flattened.push({
           index: flattened.length + 1,
           document_id: span.document_id,
@@ -108,10 +119,10 @@ export default async function routes(app: FastifyInstance) {
     let answer = "I couldn't find that just yet.";
     let followUps: string[] = [];
     let summary: string | null = null;
-    let usedSpans = flattened;
+    let usedSpans: UsedSpan[] = flattened;
 
     if (!flattened.length) {
-      usedSpans = spans.slice(0, 3).map((span, idx) => ({
+      usedSpans = spans.slice(0, 3).map((span: RetrievedSpan, idx: number) => ({
         index: idx + 1,
         document_id: span.document_id,
         doc_name: span.doc_name,
@@ -122,11 +133,8 @@ export default async function routes(app: FastifyInstance) {
 
     if (usedSpans.length) {
       const excerptBlocks = usedSpans
-        .map((span) => `[${span.index}] ${span.doc_name || "Document"} (p.${span.page ?? "?"})
-${(span.text || "").slice(0, 600)}`)
-        .join("
----
-");
+        .map((span) => `[${span.index}] ${span.doc_name || "Document"} (p.${span.page ?? "?"})\n${(span.text || "").slice(0, 600)}`)
+        .join("\n---\n");
 
       const systemPrompt = "You are Joslyn AI, an IEP/504 co-pilot. Answer with empathy, keep it concise (<=180 words), and cite using bracket numbers that match the excerpts provided (e.g., [1], [2]). Offer practical next steps when possible.";
       const resp = await safeResponsesCreate({
