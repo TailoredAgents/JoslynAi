@@ -247,6 +247,112 @@ ${steps}`);
     }
 
 
+
+
+if (intentInfo.intent === "goals.smart") {
+  const actionsBase = intentInfo.actions.map((action) => {
+    if (!action.href || !childId) return action;
+    const sep = action.href.includes("?") ? "&" : "?";
+    return { ...action, href: `${action.href}${sep}child=${childId}` };
+  });
+  const actions = [...actionsBase, { type: "open_tab", label: "Open SMART goal assistant", href: `/goals?child=${childId}` }];
+
+  const trimmed = query.trim();
+  const looksLikeGoal = trimmed.length > 80 || trimmed.includes("\n");
+
+  if (looksLikeGoal) {
+    const identifier = `chat-goal-${Date.now()}`;
+    await (prisma as any).goal_rewrites.upsert({
+      where: { child_id_goal_identifier: { child_id: childId, goal_identifier: identifier } },
+      update: { status: "pending" },
+      create: {
+        child_id: childId,
+        org_id: orgId,
+        document_id: null,
+        goal_identifier: identifier,
+        rubric_json: [],
+        rewrite_json: { rewrite: "", baseline: "", measurement_plan: "", citations: [] },
+        citations_json: [],
+        status: "pending",
+      },
+    });
+    await enqueue({
+      kind: "goal_smart",
+      child_id: childId,
+      org_id: orgId,
+      document_id: null,
+      goal_identifier: identifier,
+      goal_text: trimmed,
+    });
+    return reply.send({
+      intent: intentInfo.intent,
+      answer: withDisclaimer("I'm scoring and rewriting that goal now. Check the SMART goal tab soon for the draft."),
+      citations: [],
+      actions,
+      follow_ups: ["Refresh SMART rewrites"],
+      summary: null,
+      artifacts: [],
+    });
+  }
+
+  const latestRewrite = await (prisma as any).goal_rewrites.findFirst({
+    where: { child_id: childId },
+    orderBy: { updated_at: "desc" },
+  });
+
+  if (!latestRewrite) {
+    return reply.send({
+      intent: intentInfo.intent,
+      answer: withDisclaimer("Paste the goal text or open the SMART goal assistant so I can help rewrite it."),
+      citations: [],
+      actions,
+      follow_ups: ["Open SMART goal assistant"],
+      summary: null,
+      artifacts: [],
+    });
+  }
+
+  if (latestRewrite.status === "pending") {
+    return reply.send({
+      intent: intentInfo.intent,
+      answer: withDisclaimer("I'm still evaluating that goal. Give me another moment and refresh the SMART goal assistant."),
+      citations: [],
+      actions,
+      follow_ups: ["Refresh SMART rewrites"],
+      summary: null,
+      artifacts: [],
+    });
+  }
+
+  const rubric = Array.isArray(latestRewrite.rubric_json) ? latestRewrite.rubric_json : [];
+  const rewriteJson = latestRewrite.rewrite_json || {};
+  const rewriteText = rewriteJson.rewrite || "Here's a clearer rewrite ready for the assistant.";
+  const baseline = rewriteJson.baseline;
+  const plan = rewriteJson.measurement_plan;
+  const lines: string[] = [];
+  lines.push(`Goal ${latestRewrite.goal_identifier}: ${rewriteText}`);
+  if (baseline) lines.push(`Baseline: ${baseline}`);
+  if (plan) lines.push(`Measurement plan: ${plan}`);
+  if (rubric.length) {
+    const summary = rubric.map((item: any) => `${item.criterion || "SMART"}: ${item.rating || "Needs review"}`).join("; ");
+    lines.push(`Rubric summary: ${summary}`);
+  }
+  lines.push("Open the SMART goal assistant to copy or confirm the rewrite.");
+
+  const citationsPayload = Array.isArray(latestRewrite.citations_json) ? latestRewrite.citations_json : [];
+  const followUps = ["Draft progress probes", "What should I tell the team?"];
+
+  return reply.send({
+    intent: intentInfo.intent,
+    answer: withDisclaimer(lines.join("\n\n")),
+    citations: citationsPayload,
+    actions,
+    follow_ups: followUps,
+    summary: rewriteText,
+    artifacts: [{ kind: "goal_rewrite", id: latestRewrite.id }],
+  });
+}
+
     if (intentInfo.intent === "appeal.kit") {
       const actions = intentInfo.actions.map((action) => {
         if (!action.href || !childId) return action;

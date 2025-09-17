@@ -140,7 +140,8 @@ model goal_rewrites {
   updated_at       DateTime @updatedAt
 
   @@index([org_id, child_id])
-  @@index([document_id, goal_identifier])
+  @@index([document_id])
+  @@unique([child_id, goal_identifier])
 }
 
 model advocacy_outlines {

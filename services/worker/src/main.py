@@ -773,6 +773,113 @@ elif kind == "denial_explain":
             except Exception as inner:
                 print("[WORKER] unable to mark denial explanation error:", inner)
 
+
+            elif kind == "goal_smart":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                document_id = task.get("document_id")
+                goal_identifier = task.get("goal_identifier")
+                goal_text = task.get("goal_text")
+                if not goal_text or not goal_identifier:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        segments = []
+                        if document_id:
+                            segments = _select_segments(conn, document_id, "G", "IEP Goal", limit=30)
+                        prompt_parts = [
+                            "Original goal:",
+                            goal_text,
+                            "",
+                            "Evaluate the goal using SMART criteria (Specific, Measurable, Attainable, Relevant, Time-bound).",
+                            "Return a table of ratings plus a rewritten goal that is measurable and includes baseline/progress monitoring plan.",
+                        ]
+                        if segments:
+                            prompt_parts.append("Supporting excerpts:")
+                            for seg in segments:
+                                prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
+                        prompt = "
+".join(prompt_parts)
+
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        schema = {
+                            "name": "GoalSmartRewrite",
+                            "strict": True,
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "rubric": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "criterion": {"type": "string"},
+                                                "rating": {"type": "string"},
+                                                "notes": {"type": "string"}
+                                            },
+                                            "required": ["criterion", "rating"]
+                                        },
+                                        "default": []
+                                    },
+                                    "baseline": {"type": "string", "default": ""},
+                                    "measurement_plan": {"type": "string", "default": ""},
+                                    "rewrite": {"type": "string"},
+                                    "citations": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "default": []
+                                    }
+                                },
+                                "required": ["rubric", "rewrite"],
+                                "additionalProperties": False
+                            }
+                        }
+
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": "You are Joslyn, a special education advocate. Provide concise, actionable output."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": schema}
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty SMART response")
+                        data = json.loads(raw)
+                        rewrite_json = {
+                            "rubric": data.get("rubric") or [],
+                            "rewrite": data.get("rewrite") or "",
+                            "baseline": data.get("baseline") or "",
+                            "measurement_plan": data.get("measurement_plan") or "",
+                            "citations": data.get("citations") or []
+                        }
+
+                        label_map = {seg["label"]: seg for seg in segments}
+                        _resolve_citations([rewrite_json], label_map)
+                        citations_json = _build_citation_entries(label_map, set(rewrite_json.get("citations") or []))
+
+                        conn.execute(
+                            """
+                            INSERT INTO goal_rewrites (org_id, child_id, document_id, goal_identifier, rubric_json, rewrite_json, citations_json, status)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, 'draft')
+                            ON CONFLICT (child_id, goal_identifier) DO UPDATE
+                              SET rubric_json = EXCLUDED.rubric_json,
+                                  rewrite_json = EXCLUDED.rewrite_json,
+                                  citations_json = EXCLUDED.citations_json,
+                                  status = 'draft',
+                                  updated_at = NOW()
+                            """,
+                            (org_id, child_id, document_id, goal_identifier, Json(rewrite_json.get("rubric") or []), Json(rewrite_json), Json(citations_json))
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] goal_smart failed:", e)
             elif kind == "build_appeal_kit":
                 kit_id = task.get("kit_id")
                 db_url = os.getenv("DATABASE_URL")
