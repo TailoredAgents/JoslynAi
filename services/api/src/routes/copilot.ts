@@ -4,6 +4,7 @@ import { OpenAI } from "openai";
 import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
 import { normalizeAndLimit, type CitationGroup } from "@joslyn-ai/core/rag/citations";
+import { enqueue } from "../lib/redis.js";
 import { safeResponsesCreate } from "../lib/openai.js";
 import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 
@@ -80,6 +81,129 @@ export default async function routes(app: FastifyInstance) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const intentInfo = detectIntent(query);
+
+    if (intentInfo.intent === "iep.diff") {
+      const diff = await (prisma as any).iep_diffs.findFirst({
+        where: { child_id: childId },
+        orderBy: { created_at: "desc" },
+      });
+
+      let answerText = "I haven't spotted an IEP comparison yet.";
+      let summaryText: string | null = null;
+      let followUps: string[] = [];
+      let citationsPayload: any[] = [];
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      if (!diff) {
+        const latest = await (prisma as any).documents.findFirst({
+          where: { child_id: childId, type: "iep" },
+          orderBy: [{ version: "desc" }, { created_at: "desc" }],
+          select: { id: true },
+        });
+        if (latest?.id) {
+          await enqueue({ kind: "prep_iep_diff", document_id: latest.id, child_id: childId, org_id: orgId });
+          answerText = "I haven't compared the latest IEP yet, so I'm kicking that off now. Give me a minute, then open the diff tab for the highlights.";
+        } else {
+          answerText = "I couldn't find two IEP versions to compare yet. Upload the latest plan and I'll run the diff.";
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer(answerText),
+          citations: [],
+          actions,
+          follow_ups: ["Open the IEP diff"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (diff.status === "pending" || diff.status === "processing") {
+        answerText = "I'm still comparing the last two IEPs. Check back in a moment or open the diff tab to see the job status.";
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer(answerText),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh the diff"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (diff.status === "error") {
+        const latest = await (prisma as any).documents.findFirst({
+          where: { child_id: childId, type: "iep" },
+          orderBy: [{ version: "desc" }, { created_at: "desc" }],
+          select: { id: true },
+        });
+        if (latest?.id) {
+          await enqueue({ kind: "prep_iep_diff", document_id: latest.id, child_id: childId, org_id: orgId });
+        }
+        answerText = "The last comparison hit an error, so I've queued it again. Open the diff tab if you want to watch for the update.";
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer(answerText),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh the diff"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const payload = (diff as any).diff_json || {};
+      const riskFlags = ((diff as any).risk_flags_json || []) as any[];
+      const citationsRaw = ((diff as any).citations_json || []) as any[];
+
+      summaryText = typeof payload.summary === "string" ? payload.summary : null;
+      const changeCount = Array.isArray(payload.minutes_changes) ? payload.minutes_changes.length : 0;
+      const goalAdds = Array.isArray(payload.goals_added) ? payload.goals_added.length : 0;
+      const goalDrops = Array.isArray(payload.goals_removed) ? payload.goals_removed.length : 0;
+      const accomChanges = Array.isArray(payload.accommodations_changed) ? payload.accommodations_changed.length : 0;
+
+      const lines: string[] = [];
+      if (summaryText) {
+        lines.push(summaryText);
+      }
+      const changeHighlights: string[] = [];
+      if (changeCount) changeHighlights.push(`${changeCount} service minute change${changeCount === 1 ? "" : "s"}`);
+      if (goalAdds) changeHighlights.push(`${goalAdds} goal${goalAdds === 1 ? "" : "s"} added`);
+      if (goalDrops) changeHighlights.push(`${goalDrops} goal${goalDrops === 1 ? "" : "s"} removed`);
+      if (accomChanges) changeHighlights.push(`${accomChanges} accommodation update${accomChanges === 1 ? "" : "s"}`);
+      if (changeHighlights.length) {
+        lines.push(`Highlights: ${changeHighlights.join(", ")}.`);
+      }
+      if (riskFlags.length) {
+        const topFlag = riskFlags[0];
+        lines.push(`Risk flag: ${topFlag?.reason || "Something needs a closer look."}`);
+      }
+      lines.push("Open the IEP diff tab for the full side-by-side and citations.");
+      answerText = lines.join("\n\n");
+
+      citationsPayload = citationsRaw.map((c: any, idx: number) => ({
+        index: idx + 1,
+        document_id: c?.document_id,
+        doc_name: c?.doc_name,
+        page: c?.page,
+        snippet: c?.snippet,
+      }));
+
+      followUps = ["Draft a note about these changes", "What should I ask in the meeting?"];
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(answerText),
+        citations: citationsPayload,
+        actions,
+        follow_ups: followUps,
+        summary: summaryText,
+        artifacts: [],
+      });
+    }
     const spans = (await retrieveForAsk(prisma as any, openai, childId, query, 18)) as RetrievedSpan[];
 
     const docLookup: Record<string, string[]> = {};
