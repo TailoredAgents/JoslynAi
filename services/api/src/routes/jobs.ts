@@ -1,10 +1,20 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
+import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.post("/jobs/enqueue", async (req, reply) => {
     const { child_id, type, payload } = (req.body as any);
-    const job = await (prisma as any).job_runs.create({ data: { child_id, type, status: "pending", payload_json: payload || {} } });
+    const orgId = orgIdFromRequest(req);
+    let childIdValue: string | null = null;
+    if (child_id) {
+      const resolved = await resolveChildId(child_id, orgId);
+      if (!resolved) {
+        return reply.status(404).send({ error: "child_not_found" });
+      }
+      childIdValue = resolved;
+    }
+    const job = await (prisma as any).job_runs.create({ data: { child_id: childIdValue, type, status: "pending", payload_json: payload || {} } });
     return reply.send({ job_id: job.id });
   });
 
@@ -15,8 +25,17 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.get("/jobs", async (req, reply) => {
-    const child_id = (req.query as any)?.child_id;
-    const rows = await (prisma as any).job_runs.findMany({ where: child_id ? { child_id } : {}, orderBy: { created_at: "desc" }, take: 10 });
+    const orgId = orgIdFromRequest(req);
+    const childIdentifier = (req.query as any)?.child_id;
+    const where: any = {};
+    if (childIdentifier) {
+      const resolved = await resolveChildId(childIdentifier, orgId);
+      if (!resolved) {
+        return reply.send([]);
+      }
+      where.child_id = resolved;
+    }
+    const rows = await (prisma as any).job_runs.findMany({ where, orderBy: { created_at: "desc" }, take: 10 });
     return reply.send(rows);
   });
 
@@ -26,5 +45,9 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(row);
   });
 }
+
+
+
+
 
 

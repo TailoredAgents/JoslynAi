@@ -1,6 +1,7 @@
-ï»¿"use client";
+"use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useBootstrappedChild } from "../../lib/use-child";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
@@ -23,6 +24,9 @@ export default function AboutMyChildPage() {
   const [qr, setQr] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
+  const { child, loading: childLoading, error: childError } = useBootstrappedChild();
+  const childId = child?.id ?? null;
+  const childReady = Boolean(childId);
 
   function updateField(name: string, value: string) {
     setForm((f: any) => ({ ...f, [name]: value }));
@@ -41,7 +45,7 @@ export default function AboutMyChildPage() {
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/children/demo-child/profile/save`, {
+      const res = await fetch(`${API_BASE}/children/${childId}/profile/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -55,7 +59,7 @@ export default function AboutMyChildPage() {
   async function renderPdf() {
     setRendering(true);
     try {
-      const res = await fetch(`${API_BASE}/children/demo-child/profile/render`, {
+      const res = await fetch(`${API_BASE}/children/${childId}/profile/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lang1: "en", lang2: "es" })
@@ -67,6 +71,19 @@ export default function AboutMyChildPage() {
     } finally {
       setRendering(false);
     }
+  }
+
+  if (childLoading && !childReady) {
+    return <div className="mx-auto w-full max-w-5xl py-10 text-sm text-slate-500">Loading child workspace...</div>;
+  }
+
+  if (!childLoading && !childReady) {
+    return (
+      <div className="mx-auto w-full max-w-5xl space-y-3 py-10 text-sm text-slate-500">
+        <p className="font-semibold text-rose-500">Unable to load your child workspace.</p>
+        {childError ? <p className="text-xs text-rose-400">{childError}</p> : null}
+      </div>
+    );
   }
 
   return (
@@ -99,7 +116,7 @@ export default function AboutMyChildPage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-heading text-slate-900">Strengths & supports</h2>
-            <p className="mt-1 text-xs text-slate-500">Separate each item with a commaâ€”weâ€™ll format it beautifully for you.</p>
+            <p className="mt-1 text-xs text-slate-500">Separate each item with a comma—we’ll format it beautifully for you.</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="space-y-1 text-sm text-slate-600">
                 Strengths (e.g., "pattern finder, empathetic friend")
@@ -133,10 +150,10 @@ export default function AboutMyChildPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" onClick={save} disabled={saving}>
+            <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600 disabled:opacity-40" onClick={save} disabled={saving || !childReady}>
               {saving ? "Saving..." : "Save story"}
             </button>
-            <button className="inline-flex items-center rounded-full border border-brand-200 px-6 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-400" onClick={renderPdf} disabled={rendering}>
+            <button className="inline-flex items-center rounded-full border border-brand-200 px-6 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-400 disabled:opacity-40" onClick={renderPdf} disabled={rendering || !childReady}>
               {rendering ? "Preparing..." : "Render bilingual handout"}
             </button>
             <Link className="inline-flex items-center rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300" href="/letters/new">
@@ -177,13 +194,29 @@ export default function AboutMyChildPage() {
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Looking for inspiration?</p>
-            <p className="mt-3">â€¢ Highlight routines that bring joy
-              <br />â€¢ Mention what helps transitions
-              <br />â€¢ Celebrate the advocates on your team</p>
+            <p className="mt-3">• Highlight routines that bring joy
+              <br />• Mention what helps transitions
+              <br />• Celebrate the advocates on your team</p>
           </div>
         </aside>
       </section>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

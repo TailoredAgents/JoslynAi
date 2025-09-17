@@ -49,6 +49,11 @@ VALUES
   (gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true, now(), now())
 ON CONFLICT (jurisdiction, kind) DO NOTHING;
 
+-- Seed demo child for default workspace
+INSERT INTO children (id, org_id, name, school_name, dob, created_at, slug)
+VALUES (gen_random_uuid(), 'demo-org', 'Demo Child', NULL, NULL, now(), 'demo-child')
+ON CONFLICT (slug) DO NOTHING;
+
 -- Seed entitlements for demo org (dev)
 INSERT INTO entitlements (id, org_id, plan, features_json)
 VALUES (gen_random_uuid(), 'demo-org', 'pro', '{"ask":true,"smart_attachments":true,"letters":{"render":true,"send":true},"brief":true}')

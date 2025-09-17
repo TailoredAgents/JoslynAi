@@ -2,9 +2,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBootstrappedChild } from "../../lib/use-child";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
-const CHILD_ID = "demo-child";
 
 const SUGGESTIONS = [
   "List services & minutes",
@@ -25,13 +25,19 @@ export default function CopilotPage() {
   const [uploading, setUploading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
 
-  useEffect(() => {
-    pollJobs();
-  }, []);
+  const { child, loading: childLoading, error: childError, refresh: refreshChild } = useBootstrappedChild();
+  const childId = child?.id ?? null;\r\n  const childReady = Boolean(childId);
 
-  async function pollJobs() {
+  useEffect(() => {
+    if (!childId) return;
+    pollJobs(childId);
+  }, [childId]);
+
+  async function pollJobs(targetId?: string) {
+    const id = targetId ?? childId;
+    if (!id) return;
     try {
-      const res = await fetch(`${API_BASE}/jobs?child_id=${CHILD_ID}`);
+      const res = await fetch(`${API_BASE}/jobs?child_id=${id}`);
       const data = await res.json();
       setJobs(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -42,13 +48,13 @@ export default function CopilotPage() {
   async function handleUpload(evt: React.FormEvent<HTMLFormElement>) {
     evt.preventDefault();
     const file = fileInputRef.current?.files?.[0];
-    if (!file) return;
+    if (!file || !childId) return;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      await fetch(`${API_BASE}/children/${CHILD_ID}/documents`, { method: "POST", body: formData as any });
-      await pollJobs();
+      await fetch(`${API_BASE}/children/${childId}/documents`, { method: "POST", body: formData as any });
+      await pollJobs(childId);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       console.error(err);
@@ -59,14 +65,14 @@ export default function CopilotPage() {
 
   async function askCopilot(prompt?: string) {
     const query = (prompt ?? question).trim();
-    if (!query) return;
+    if (!query || !childId) return;
     setMessages((prev) => [...prev, { role: "user", content: query }]);
     if (!prompt) {
       setQuestion("");
     }
     setThinking(true);
     try {
-      const res = await fetch(`${API_BASE}/children/${CHILD_ID}/ask`, {
+      const res = await fetch(`${API_BASE}/children/${childId}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query })
@@ -98,6 +104,28 @@ export default function CopilotPage() {
     [jobs]
   );
 
+  if (childLoading && !childReady) {
+    return <div className="mx-auto w-full max-w-6xl py-10 text-sm text-slate-500">Loading child workspace...</div>;
+  }
+
+  if (!childLoading && !childReady) {
+    return (
+      <div className="mx-auto w-full max-w-6xl py-10 text-sm text-slate-500">
+        <p className="mb-3 font-semibold text-rose-500">
+          Unable to load your child workspace.
+        </p>
+        {childError ? <p className="mb-4 text-xs text-rose-400">{childError}</p> : null}
+        <button
+          type="button"
+          className="inline-flex items-center rounded-full border border-brand-200 px-4 py-2 text-xs font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700"
+          onClick={refreshChild}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 py-10">
       <header className="space-y-4">
@@ -118,7 +146,7 @@ export default function CopilotPage() {
               <button
                 type="button"
                 className="text-xs font-semibold text-slate-500 transition hover:text-brand-600"
-                onClick={pollJobs}
+                onClick={() => pollJobs(childId)}
               >
                 Refresh jobs
               </button>
@@ -156,7 +184,7 @@ export default function CopilotPage() {
                   type="button"
                   className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-brand-600 shadow-sm transition hover:border-brand-400 hover:text-brand-700 focus:outline-none focus:ring focus:ring-brand-200/70"
                   onClick={() => askCopilot(suggestion)}
-                  disabled={thinking}
+                  disabled={thinking || !childReady}
                 >
                   <span className="h-2 w-2 rounded-full bg-brand-400" aria-hidden />
                   {suggestion}
@@ -174,7 +202,7 @@ export default function CopilotPage() {
                 type="button"
                 className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600 disabled:opacity-40"
                 onClick={() => askCopilot()}
-                disabled={thinking || !question.trim()}
+                disabled={thinking || !question.trim() || !childReady}
               >
                 Send
               </button>
@@ -190,7 +218,7 @@ export default function CopilotPage() {
             <button
               type="submit"
               className="mt-4 inline-flex items-center rounded-full bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-40"
-              disabled={uploading}
+              disabled={uploading || !childReady}
             >
               {uploading ? "Uploading…" : "Upload to Joslyn AI"}
             </button>
@@ -226,3 +254,28 @@ export default function CopilotPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

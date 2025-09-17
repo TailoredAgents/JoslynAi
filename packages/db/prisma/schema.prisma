@@ -13,9 +13,12 @@ model Children {
   id        String   @id @default(uuid()) @db.Uuid
   org_id    String?  @db.Uuid
   name      String
+  slug      String?
   school_name String?
   dob       DateTime?
   created_at DateTime @default(now())
+
+  @@unique([org_id, slug])
 
   @@map("children")
 }

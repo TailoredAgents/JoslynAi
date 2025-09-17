@@ -6,6 +6,7 @@ import { safeResponsesCreate } from "../lib/openai.js";
 import fs from "node:fs";
 import path from "node:path";
 import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
+import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 function readPrompt(rel: string) {
   const p = path.resolve(process.cwd(), rel);
@@ -61,7 +62,12 @@ export default async function routes(fastify: FastifyInstance) {
     const { requireEntitlement } = await import("../mw/entitlements.js");
     await requireEntitlement(req, reply, "ask");
     const { query, lang = "en" } = req.body;
-    const childId = req.params.id;
+    const orgId = orgIdFromRequest(req);
+    const childIdInput = req.params.id;
+    const childId = await resolveChildId(childIdInput, orgId);
+    if (!childId) {
+      return reply.status(404).send({ error: "child_not_found" });
+    }
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const spans = await retrieveForAsk(prisma as any, openai, childId, query, 12);
@@ -106,4 +112,7 @@ export default async function routes(fastify: FastifyInstance) {
     return reply.send({ answer: withDisclaimer(parsed.answer), citations: cit });
   });
 }
+
+
+
 

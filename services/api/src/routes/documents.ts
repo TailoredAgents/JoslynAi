@@ -3,7 +3,7 @@ import multipart from "@fastify/multipart";
 import crypto from "node:crypto";
 import { prisma } from "../lib/db.js";
 import { putObject } from "../lib/s3.js";
-import { enqueue } from "../lib/redis.js";
+import { enqueue } from "../lib/redis.js";\nimport { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 function guessDocType(filename: string) {
   const f = filename.toLowerCase();
@@ -19,7 +19,12 @@ export default async function routes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string } }>("/children/:id/documents", async (req, reply) => {
     const data = await (req as any).file?.();
     if (!data) return reply.status(400).send({ error: "No file uploaded" });
-    const childId = req.params.id;
+    const childInput = req.params.id;
+    const orgId = orgIdFromRequest(req);
+    const childId = await resolveChildId(childInput, orgId);
+    if (!childId) {
+      return reply.status(404).send({ error: "child_not_found" });
+    }
 
     const chunks: Buffer[] = [];
     for await (const ch of data.file) chunks.push(ch as Buffer);
@@ -108,4 +113,7 @@ export default async function routes(fastify: FastifyInstance) {
     return reply.send(spans);
   });
 }
+
+
+
 
