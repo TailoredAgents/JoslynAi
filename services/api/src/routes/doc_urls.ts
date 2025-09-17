@@ -2,7 +2,6 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import { signedGetUrl } from "../lib/s3.js";
 import { orgIdFromRequest } from "../lib/child.js";
-import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { id: string }, Querystring: { ttl?: string } }>(
