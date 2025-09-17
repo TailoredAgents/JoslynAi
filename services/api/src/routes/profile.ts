@@ -67,7 +67,7 @@ export default async function routes(app: FastifyInstance) {
     // share link
     const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     const org_id = orgIdFromRequest(req as any);
-    await (prisma as any).share_links.create({ data: { org_id: org_id || "", resource_type: "profile", resource_id: child_id, token } });
+    await (prisma as any).share_links.create({ data: { org_id, resource_type: "profile", resource_id: child_id, token } });
     const base = process.env.PUBLIC_BASE_URL || "http://localhost:8080";
     const share_url = `${base}/share/${token}`;
     const qr_base64 = await QRCode.toDataURL(share_url);

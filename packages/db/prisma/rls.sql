@@ -52,15 +52,15 @@ BEGIN
   FOR t IN SELECT unnest(ARRAY[
     'documents','doc_spans','iep_extract','deadlines','letters','claims','eobs',
     'next_best_steps','notifications','agent_runs','glossaries','share_links','child_profile',
-    'events','org_settings','org_members','invites','job_runs'
+    'events','org_settings','org_members','invites','job_runs','entitlements'
   ])
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS rls_%I ON %I', t, t);
-    -- Transitional policy: if current_org_id() is NULL, allow (dev); else enforce equality
+    -- Strict org policy: enforce equality
     EXECUTE format(
       $$CREATE POLICY rls_%1$I ON %1$I
-         USING ( current_org_id() IS NULL OR org_id = current_org_id() )
-         WITH CHECK ( current_org_id() IS NULL OR org_id = current_org_id() )$$,
+         USING ( org_id = current_org_id() )
+         WITH CHECK ( org_id = current_org_id() )$$,
       t
     );
   END LOOP;
