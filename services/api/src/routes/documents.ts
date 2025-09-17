@@ -3,7 +3,8 @@ import multipart from "@fastify/multipart";
 import crypto from "node:crypto";
 import { prisma } from "../lib/db.js";
 import { putObject } from "../lib/s3.js";
-import { enqueue } from "../lib/redis.js";\nimport { orgIdFromRequest, resolveChildId } from "../lib/child.js";
+import { enqueue } from "../lib/redis.js";
+import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 function guessDocType(filename: string) {
   const f = filename.toLowerCase();
@@ -19,21 +20,21 @@ export default async function routes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string } }>("/children/:id/documents", async (req, reply) => {
     const data = await (req as any).file?.();
     if (!data) return reply.status(400).send({ error: "No file uploaded" });
-    const childInput = req.params.id;
-    const orgId = orgIdFromRequest(req);
+    const childInput = (req.params as any).id;
+    const orgId = orgIdFromRequest(req as any);
     const childId = await resolveChildId(childInput, orgId);
     if (!childId) {
       return reply.status(404).send({ error: "child_not_found" });
     }
 
     const chunks: Buffer[] = [];
-    for await (const ch of data.file) chunks.push(ch as Buffer);
+    for await (const ch of (data as any).file) chunks.push(ch as Buffer);
     const buf = Buffer.concat(chunks);
 
     const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
     const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
 
-    await putObject(key, buf, data.mimetype);
+    await putObject(key, buf, (data as any).mimetype);
 
     // Prefer using Prisma model if available; fallback to raw insert
     let documentId: string | undefined;
@@ -52,14 +53,14 @@ export default async function routes(fastify: FastifyInstance) {
         },
         select: { id: true },
       });
-      documentId = doc?.id;
+      documentId = (doc as any)?.id;
     } catch {}
 
     // dedupe by sha256+child
     if (!documentId) {
       const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256, org_id: orgId } }).catch(()=>null);
-      if (existing?.id) {
-        return reply.send({ document_id: existing.id, storage_key: existing.storage_uri });
+      if ((existing as any)?.id) {
+        return reply.send({ document_id: (existing as any).id, storage_key: (existing as any).storage_uri });
       }
       // compute version by child+type
       let version = 1;
@@ -93,7 +94,7 @@ export default async function routes(fastify: FastifyInstance) {
         data: { child_id: childId, org_id: orgId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
         select: { id: true }
       });
-      jobId = job?.id || null;
+      jobId = (job as any)?.id || null;
     } catch {}
 
     await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, org_id: orgId, filename: data.filename, job_id: jobId });
@@ -103,7 +104,7 @@ export default async function routes(fastify: FastifyInstance) {
 
   // Spans by document/page to aid highlighter
   fastify.get<{ Params: { id: string }, Querystring: { page?: string } }>("/documents/:id/spans", async (req, reply) => {
-    const { id } = req.params as any;
+    const { id } = (req.params as any);
     const orgId = orgIdFromRequest(req as any);
     // Assert document belongs to current org; prevents cross-tenant leakage even if RLS session missing
     const doc = await (prisma as any).documents.findFirst({ where: { id, org_id: orgId }, select: { id: true } });
@@ -119,7 +120,4 @@ export default async function routes(fastify: FastifyInstance) {
     return reply.send(spans);
   });
 }
-
-
-
 

@@ -1,6 +1,15 @@
 import { prisma } from "./db.js";
 
-export function orgIdFromRequest(req: any): string {\n  return (req?.orgId as string) || (req?.headers?.['x-org-id'] as string) || (req?.user?.org_id as string) || 'demo-org';\n}\n\nconst UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function orgIdFromRequest(req: any): string {
+  return (
+    (req?.orgId as string) ||
+    (req?.headers?.['x-org-id'] as string) ||
+    (req?.user?.org_id as string) ||
+    'demo-org'
+  );
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isUuid(value: string | null | undefined): boolean {
   if (!value) return false;
