@@ -18,9 +18,9 @@ export function useBootstrappedChild() {
   const fetchChild = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(${API_BASE}/children/bootstrap, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/children/bootstrap`, { cache: "no-store" });
       if (!res.ok) {
-        throw new Error(Bootstrap failed with status );
+        throw new Error(`Bootstrap failed with status ${res.status}`);
       }
       const data = await res.json();
       setChild(data?.child ?? null);
