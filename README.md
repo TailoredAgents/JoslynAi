@@ -80,3 +80,30 @@ Prompts & templates
 
 - See `packages/core/prompts/*` and `packages/core/templates/*`.
 
+## Multi-tenancy
+
+- Requests are org-scoped. In development, the API reads the `x-org-id` header (defaults to `demo-org`). In production, the authenticated user/session determines org.
+- Isolation is enforced with strict Postgres Row-Level Security (RLS) using the session GUC `request.jwt.org_id`. Cross-tenant access returns 404 where applicable (e.g., documents, spans, letters, jobs).
+- Object storage keys are namespaced by org:
+  - Documents: `org/{org_id}/children/{child_id}/...`
+  - Letters: `org/{org_id}/letters/{letter_id}.pdf`
+  - Profiles: `org/{org_id}/profiles/{child_id}.pdf`
+  - Forms: `org/{org_id}/forms/{id}.pdf`
+- Worker jobs include `org_id`, and the worker sets the DB session org before reads/writes to respect RLS.
+
+## Testing
+
+- End-to-end tests (Playwright) cover onboarding, ask/brief, letters, and cross-tenant isolation.
+- Run locally (with the stack up and `OPENAI_API_KEY` set):
+  - `pnpm dlx playwright install`
+  - `pnpm dlx playwright test -c e2e`
+  - Or: `npx playwright test -c e2e`
+
+## Notable endpoints (dev)
+
+- `GET /health` → `{ ok: true }`
+- `POST /children/:id/ask` → `{ answer, citations }`
+- `GET /documents/:id/url` (org-scoped)
+- `GET /documents/:id/spans?page=N` (org-scoped)
+- `POST /tools/letter/draft|render|send` (org/role/entitlement-scoped)
+

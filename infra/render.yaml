@@ -58,7 +58,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: INTERNAL_SELF_BASE
-        value: http://iep-ally-api:10000
+        value: http://iep-ally-api:8080
       - key: MAIL_HOST
         sync: false
       - key: MAIL_PORT
@@ -113,10 +113,6 @@ services:
       - key: S3_SECRET_ACCESS_KEY
         sync: false
       - key: INTERNAL_API_KEY
-        fromService:
-          name: iep-ally-api
-          type: web
-      - key: API_URL
         fromService:
           name: iep-ally-api
           type: web
