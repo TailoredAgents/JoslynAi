@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useBootstrappedChild } from "../../lib/use-child";
 import { useSession } from "next-auth/react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
@@ -11,10 +12,15 @@ export default function NewMeetingPage() {
   const [consented, setConsented] = useState(false);
   const { data: session } = useSession();
   const userId = typeof (session as any)?.user?.id === "string" ? String((session as any).user.id) : undefined;
+  const { child, loading: childLoading } = useBootstrappedChild();
+  const childId = (child as any)?.id || null;
+  const wsBase = (API_BASE || "http://localhost:8080").startsWith("https")
+    ? (API_BASE || "http://localhost:8080").replace(/^https/, "wss")
+    : (API_BASE || "http://localhost:8080").replace(/^http/, "ws");
 
   async function connect() {
-    if (!consented) return;
-    const ws = new WebSocket(`ws://localhost:8080/realtime/demo-child`);
+    if (!consented || !childId) return;
+    const ws = new WebSocket(`${wsBase}/realtime/${childId}`);
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
     ws.onmessage = () => {};
@@ -34,7 +40,7 @@ export default function NewMeetingPage() {
       await fetch(`${API_BASE}/events/consent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(userId ? { "x-user-id": userId } : {}) },
-        body: JSON.stringify({ child_id: "demo-child", consent: true })
+        body: JSON.stringify({ child_id: childId, consent: true })
       });
       await connect();
     } else {
@@ -51,7 +57,7 @@ export default function NewMeetingPage() {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Meeting (demo)</h2>
       <label className="flex items-center gap-2">
-        <input type="checkbox" checked={consented} onChange={handleConsentToggle} />
+        <input type="checkbox" checked={consented} onChange={handleConsentToggle} disabled={!childId || childLoading} />
         <span>I consent to capturing notes</span>
       </label>
       <div className="text-sm">WebSocket: {connected ? "connected" : "disconnected"}</div>
@@ -65,7 +71,7 @@ export default function NewMeetingPage() {
       <button
         className="bg-sky-500 text-white px-3 py-1 rounded disabled:opacity-50"
         onClick={sendCommitment}
-        disabled={!consented}
+        disabled={!consented || !childId}
       >
         Create task from caption
       </button>

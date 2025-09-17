@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useBootstrappedChild } from "../../lib/use-child";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
@@ -8,15 +9,18 @@ export default function NewLetter() {
   const [text, setText] = useState<string>("");
   const [letterId, setLetterId] = useState<string>("");
   const [pdfUri, setPdfUri] = useState<string>("");
+  const { child, loading: childLoading } = useBootstrappedChild();
+  const childId = (child as any)?.id || null;
 
   async function draft() {
+    if (!childId) return;
     const res = await fetch(`${API_BASE}/tools/letter/draft`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         kind,
         merge_fields: {
-          child_id: "demo-child",
+          child_id: childId,
           parent_name: "Parent Name",
           child_name: "Demo Child",
           school_name: "Demo School",
@@ -32,6 +36,7 @@ export default function NewLetter() {
   }
 
   async function renderPdf() {
+    if (!letterId) return;
     const res = await fetch(`${API_BASE}/tools/letter/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,8 +67,8 @@ export default function NewLetter() {
         <option value="thank-you">Thank You</option>
       </select>
       <div className="space-x-2">
-        <button className="bg-sky-500 text-white px-3 py-1 rounded" onClick={draft}>Draft</button>
-        {letterId && <button className="bg-slate-700 text-white px-3 py-1 rounded" onClick={renderPdf}>Render PDF</button>}
+        <button className="bg-sky-500 text-white px-3 py-1 rounded disabled:opacity-50" onClick={draft} disabled={!childId || childLoading}>Draft</button>
+        {letterId && <button className="bg-slate-700 text-white px-3 py-1 rounded disabled:opacity-50" onClick={renderPdf} disabled={!letterId}>Render PDF</button>}
         {pdfUri && <button className="bg-emerald-600 text-white px-3 py-1 rounded" onClick={sendEmail}>Send Email</button>}
       </div>
       {text && (

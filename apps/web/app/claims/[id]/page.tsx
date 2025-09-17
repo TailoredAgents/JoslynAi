@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -24,9 +24,8 @@ export default function ClaimPage() {
   }, [claimId]);
 
   const amountEntries = useMemo(() => Object.entries(data?.amounts || {}).map(([label, value]) => ({ label, value })), [data?.amounts]);
-
-  if (!claimId) return <div className="p-6 text-sm text-slate-500">Loading claim�</div>;
-  if (loading) return <div className="p-6 text-sm text-slate-500">Pulling claim details�</div>;
+  if (!claimId) return <div className="p-6 text-sm text-slate-500">Loading claim…</div>;
+  if (loading) return <div className="p-6 text-sm text-slate-500">Pulling claim details…</div>;
   if (error) return <div className="p-6 text-sm text-red-600">Unable to load claim: {error}</div>;
   if (!data) return <div className="p-6 text-sm text-slate-500">Claim not available.</div>;
 

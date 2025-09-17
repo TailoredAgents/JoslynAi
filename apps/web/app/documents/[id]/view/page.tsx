@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -118,7 +118,7 @@ export default function DocumentViewPage() {
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <span>Page {c.page}</span>
                       <Link className="font-semibold text-brand-600" href={`/documents/${docId}/view?page=${c.page}&q=${encodeURIComponent(c.quote)}`}>
-                        Jump to page ?
+                        Jump to page →
                       </Link>
                     </div>
                     <p className="mt-2 text-sm text-slate-700">{c.quote.slice(0, 160)}{c.quote.length > 160 ? "�" : ""}</p>

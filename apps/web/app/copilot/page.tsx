@@ -78,7 +78,7 @@ export default function CopilotPage() {
         body: JSON.stringify({ query })
       });
       const data = await res.json();
-      const answer = data?.answer ?? "I wasn’t able to find that just yet.";
+      const answer = data?.answer ?? "I wasn't able to find that just yet.";
       setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
     } catch (err) {
       console.error(err);
@@ -168,7 +168,7 @@ export default function CopilotPage() {
                   ))}
                   {thinking && (
                     <li className="max-w-[60%] rounded-2xl bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
-                      Joslyn AI is thinking…
+                                            Joslyn AI is thinking�
                     </li>
                   )}
                 </ul>
@@ -194,7 +194,7 @@ export default function CopilotPage() {
             <div className="flex items-center gap-3">
               <input
                 className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
-                placeholder="Ask a question about your child’s plan…"
+                placeholder="Ask a question about your child's plan…"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
               />
@@ -244,9 +244,9 @@ export default function CopilotPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Sample prompts</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>• What is an IEP and why does it matter?</li>
-              <li>• How can I prepare for my child’s next IEP meeting?</li>
-              <li>• What supports help during sensory overload?</li>
+              <li>- What is an IEP and why does it matter?</li>
+              <li>- How can I prepare for my child's next IEP meeting?</li>
+              <li>- What supports help during sensory overload?</li>
             </ul>
           </div>
         </aside>

@@ -21,7 +21,7 @@ const featureHighlights = [
   },
   {
     title: "Parent-friendly letters",
-    body: "Draft requests, follow-ups, and gratitude notes in minutes—ready to translate and send.",
+    body: "Draft requests, follow-ups, and gratitude notes in minutesï¿½ready to translate and send.",
     icon: "??"
   }
 ];
@@ -95,7 +95,7 @@ export default function HomePage() {
             Joslyn AI turns dense documents into guidance you can act on. Ask questions with citations, see deadlines surface automatically, and share warm snapshots about your child in English and Spanish.
           </p>
           <p className="max-w-2xl text-sm text-slate-600">
-            She also coaches you through everyday decisions—explaining special education jargon, suggesting questions for your care team, and sharing self-care ideas for parents navigating the special-needs world.
+            She also coaches you through everyday decisionsï¿½explaining special education jargon, suggesting questions for your care team, and sharing self-care ideas for parents navigating the special-needs world.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -209,10 +209,10 @@ export default function HomePage() {
         <div className="rounded-3xl border border-brand-100 bg-white p-6 shadow-uplift">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">Why families choose us</p>
           <h2 className="mt-2 text-2xl font-heading text-slate-900">Designed with neurodiverse caregivers, advocates, and educators.</h2>
-          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain language—and lean on her when you need advocacy tips or emotional reassurance.</p>
+          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain languageï¿½and lean on her when you need advocacy tips or emotional reassurance.</p>
           <div className="mt-6 space-y-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              “Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid.”<br />
+              ï¿½Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid.ï¿½<br />
               <span className="mt-2 block font-semibold text-slate-800">? Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -228,28 +228,28 @@ export default function HomePage() {
               <p className="font-semibold text-slate-800">Guided onboarding</p>
               <p className="mt-1 text-xs">Create a child profile, upload sample docs, and see an instant brief.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/onboarding">
-                Begin now ?
+                Begin now â†’
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Share a story</p>
               <p className="mt-1 text-xs">Capture strengths, sensory preferences, and joy to share with new providers.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/about-my-child">
-                Build profile ?
+                Build profile â†’
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Draft letters</p>
               <p className="mt-1 text-xs">Request evaluations, clarify services, and send gratitude in minutes.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/letters/new">
-                Compose now ?
+                Compose now â†’
               </Link>
             </li>
             <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="font-semibold text-slate-800">Track claims</p>
               <p className="mt-1 text-xs">Organize reimbursements and explanation of benefits in one spot.</p>
               <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700" href="/claims/demo">
-                Review sample ?
+                Review sample â†’
               </Link>
             </li>
           </ul>
@@ -259,7 +259,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-r from-brand-500 via-brand-400 to-blush-400 p-10 text-white shadow-uplift">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Parents + advocates</p>
-          <h2 className="text-3xl font-heading">Let?s make every meeting feel collaborative, not combative.</h2>
+          <h2 className="text-3xl font-heading">Let's make every meeting feel collaborative, not combative.</h2>
           <p className="text-sm text-white/80">Invite your team, share bilingual summaries, and walk in knowing the data has your back.</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/onboarding" className="inline-flex items-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-600 shadow-sm transition hover:bg-slate-100">

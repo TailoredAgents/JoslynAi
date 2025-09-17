@@ -3,6 +3,7 @@ import { prisma } from "../lib/db.js";
 import { OpenAI } from "openai";
 import { safeResponsesCreate } from "../lib/openai.js";
 import { retrieveForAsk } from "@joslyn-ai/core/rag/retriever";
+import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 const system = `You explain an IEP in plain, parent-friendly language at grade 7 level.
 Use only provided excerpts from the user's document. Always include citations.`;
@@ -35,10 +36,13 @@ export default async function routes(fastify: FastifyInstance) {
     async (req, reply) => {
       const { id } = req.params;
       const { lang = "en", child_id } = req.query;
+      const orgId = orgIdFromRequest(req);
+      const childId = await resolveChildId(child_id, orgId);
+      if (!childId) return reply.status(404).send({ error: "child_not_found" });
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       const seeds = ["services", "accommodations", "goals", "placement", "minutes"];
-      const spansSets = await Promise.all(seeds.map(seed => retrieveForAsk(prisma as any, openai, child_id, seed, 6)));
+      const spansSets = await Promise.all(seeds.map(seed => retrieveForAsk(prisma as any, openai, childId, seed, 6)));
       const spans = Array.from(new Map((spansSets.flat() as any[]).map((s: any) => [s.id, s])).values()).slice(0, 18);
       if (!spans.length) return reply.send({ overview: "I don’t see enough content in your document yet.", citations: [] });
 

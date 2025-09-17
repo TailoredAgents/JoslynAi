@@ -1,14 +1,17 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useBootstrappedChild } from "../../../lib/use-child";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
 export default function BriefPage() {
   const params = useParams<{ id: string }>();
   const docId = params?.id ? String(params.id) : "";
-  const childId = "demo-child";
+  const { child, loading: childLoading } = useBootstrappedChild();
+  const childId = child?.id || null;
+  
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +86,7 @@ export default function BriefPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link className="inline-flex items-center rounded-full border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400" href={`/documents/${docId}/view`}>
-              Open document ?
+              Open document →
             </Link>
             <Link className="inline-flex items-center rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" href={`/letters/new?doc=${docId}`}>
               Draft a follow-up letter
@@ -156,7 +159,7 @@ export default function BriefPage() {
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>Page {c.page}</span>
                         <Link className="font-semibold text-brand-600" href={`/documents/${id}/view?page=${c.page}&q=${encodeURIComponent(c.quote || "")}`} target="_blank">
-                          Jump to page ?
+                          Jump to page →
                         </Link>
                       </div>
                       <p className="mt-2 text-sm text-slate-700">{c.quote?.slice(0, 160)}{c.quote?.length > 160 ? "�" : ""}</p>
