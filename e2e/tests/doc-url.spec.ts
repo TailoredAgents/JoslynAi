@@ -9,7 +9,7 @@ test("Upload → /documents/:id/url returns signed link", async () => {
     fs.mkdirSync("dev_samples", { recursive: true });
     fs.writeFileSync(sample, "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
   }
-  const up = await api.post("http://localhost:8080/children/demo-child/documents", {
+  const boot = await api.get("http://localhost:8080/children/bootstrap");\n  const childId = (await boot.json()).child.id;\n  const up = await api.post("http://localhost:8080/children/${childId}/documents", {
     multipart: { file: fs.createReadStream(sample) }
   });
   expect(up.ok()).toBeTruthy();

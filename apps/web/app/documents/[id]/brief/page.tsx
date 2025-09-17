@@ -68,8 +68,8 @@ export default function BriefPage() {
     }
   }
 
-  if (!docId) return <div className="p-6 text-sm text-slate-500">Loading brief�</div>;
-  if (loading) return <div className="p-6 text-sm text-slate-500">Generating brief�</div>;
+  if (!docId) return <div className="p-6 text-sm text-slate-500">Loading brief…</div>;
+  if (loading) return <div className="p-6 text-sm text-slate-500">Generating brief…</div>;
   if (error) return <div className="p-6 text-sm text-red-600">Unable to load brief: {error}</div>;
   if (!data) return <div className="p-6 text-sm text-slate-500">Brief not available.</div>;
 

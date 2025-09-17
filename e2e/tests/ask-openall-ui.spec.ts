@@ -3,13 +3,13 @@ import fs from "node:fs";
 
 test("Ask UI shows 'Open all highlights' after uploading a sample IEP", async ({ page }) => {
   const api = await request.newContext();
-  await api.get("http://localhost:8080/health");
+  await api.get("http://localhost:8080/health");\n  const boot = await api.get("http://localhost:8080/children/bootstrap");\n  const childId = (await boot.json()).child.id;
   const sample = "dev_samples/sample-iep.pdf";
   if (!fs.existsSync(sample)) {
     fs.mkdirSync("dev_samples", { recursive: true });
     fs.writeFileSync(sample, "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
   }
-  await api.post("http://localhost:8080/children/demo-child/documents", {
+  await api.post("http://localhost:8080/children/${childId}/documents", {
     multipart: { file: fs.createReadStream(sample) }
   });
 

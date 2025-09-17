@@ -50,7 +50,7 @@ export default function DocumentViewPage() {
   }, [citations]);
 
   if (!docId) {
-    return <div className="p-6 text-sm text-slate-500">Loading document�</div>;
+    return <div className="p-6 text-sm text-slate-500">Loading document…</div>;
   }
 
   return (
@@ -96,7 +96,7 @@ export default function DocumentViewPage() {
             </div>
           ) : (
             <div className="grid h-96 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
-              {error || "Preparing the PDF preview�"}
+              {error || "Preparing the PDF preview…"}
             </div>
           )}
         </section>
@@ -136,9 +136,9 @@ export default function DocumentViewPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Next best steps</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>� Ask Joslyn �What services and minutes are listed?� for a quick summary.</li>
-              <li>� Draft an evaluation request under Letters if you notice missing supports.</li>
-              <li>� Share a bilingual snapshot via About My Child when onboarding new staff.</li>
+              <li>- Ask Joslyn "What services and minutes are listed?" for a quick summary.</li>
+              <li>- Draft an evaluation request under Letters if you notice missing supports.</li>
+              <li>- Share a bilingual snapshot via About My Child when onboarding new staff.</li>
             </ul>
           </div>
         </aside>

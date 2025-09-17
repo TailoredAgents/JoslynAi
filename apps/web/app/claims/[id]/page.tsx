@@ -82,9 +82,9 @@ export default function ClaimPage() {
           <div className="rounded-3xl border border-brand-100 bg-brand-50/70 p-6 text-xs text-brand-700">
             <p className="font-heading text-sm text-brand-700">Suggested follow-up</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>� Compare service codes with your IEP minutes.</li>
-              <li>� Attach supporting documentation under Documents.</li>
-              <li>� Draft a reimbursement inquiry letter if anything looks off.</li>
+              <li>• Compare service codes with your IEP minutes.</li>
+              <li>• Attach supporting documentation under Documents.</li>
+              <li>• Draft a reimbursement inquiry letter if anything looks off.</li>
             </ul>
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">

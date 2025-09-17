@@ -21,7 +21,7 @@ const featureHighlights = [
   },
   {
     title: "Parent-friendly letters",
-    body: "Draft requests, follow-ups, and gratitude notes in minutes�ready to translate and send.",
+    body: "Draft requests, follow-ups, and gratitude notes in minutes—ready to translate and send.",
     icon: "??"
   }
 ];
@@ -95,7 +95,7 @@ export default function HomePage() {
             Joslyn AI turns dense documents into guidance you can act on. Ask questions with citations, see deadlines surface automatically, and share warm snapshots about your child in English and Spanish.
           </p>
           <p className="max-w-2xl text-sm text-slate-600">
-            She also coaches you through everyday decisions�explaining special education jargon, suggesting questions for your care team, and sharing self-care ideas for parents navigating the special-needs world.
+            She also coaches you through everyday decisions—explaining special education jargon, suggesting questions for your care team, and sharing self-care ideas for parents navigating the special-needs world.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -209,10 +209,10 @@ export default function HomePage() {
         <div className="rounded-3xl border border-brand-100 bg-white p-6 shadow-uplift">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">Why families choose us</p>
           <h2 className="mt-2 text-2xl font-heading text-slate-900">Designed with neurodiverse caregivers, advocates, and educators.</h2>
-          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain language�and lean on her when you need advocacy tips or emotional reassurance.</p>
+          <p className="mt-3 text-sm text-slate-600">Joslyn AI pairs intelligent automation with human warmth. See every service minute, timeline risk, and letter drafted in plain languageand lean on her when you need advocacy tips or emotional reassurance.</p>
           <div className="mt-6 space-y-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              �Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid.�<br />
+              Joslyn AI helps me walk into meetings calm, confident, and prepared to celebrate my kid.<br />
               <span className="mt-2 block font-semibold text-slate-800">? Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
