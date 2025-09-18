@@ -657,9 +657,9 @@ def run():
                 except Exception:
                     patch_job = lambda *args, **kwargs: None
 
-                patch_job(job_id, "ocr", "processing")
+                patch_job(job_id, "ocr", "processing", task.get("org_id"))
                 task = process_pdf(task)
-                patch_job(job_id, "ocr", "done")
+                patch_job(job_id, "ocr", "done", task.get("org_id"))
 
                 filename = task.get("filename", "")
                 first_page_text = (task.get("pages") or [{"text": ""}])[0]["text"]
@@ -723,14 +723,14 @@ def run():
                     doc_type_final = doc_type_final or "other"
                     doc_tags = sorted(set([doc_type_final] + [f"domain:{d}" for d in doc_domains])) or ["other"]
 
-                patch_job(job_id, "index", "processing")
+                patch_job(job_id, "index", "processing", task.get("org_id"))
                 embed_and_store(task)
-                patch_job(job_id, "index", "done")
+                patch_job(job_id, "index", "done", task.get("org_id"))
 
                 if doc_type_final and isinstance(doc_type_final, str) and 'eob' in doc_type_final.lower():
-                    patch_job(job_id, "extract", "processing")
+                    patch_job(job_id, "extract", "processing", task.get("org_id"))
                     extract_eob(task)
-                    patch_job(job_id, "extract", "done")
+                    patch_job(job_id, "extract", "done", task.get("org_id"))
 
                 followups = []
                 if db_url and doc_child_id:

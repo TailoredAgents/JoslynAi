@@ -8,6 +8,7 @@ import requests
 EMBED_MODEL = os.getenv("OPENAI_EMBEDDINGS_MODEL", "text-embedding-3-small")
 DB_URL = os.getenv("DATABASE_URL")
 API_BASE = os.getenv("API_BASE_URL", "http://localhost:8080")
+DEFAULT_ORG = os.getenv("DEMO_ORG_ID", "00000000-0000-4000-8000-000000000000")
 
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT")
 S3_BUCKET = os.environ.get("S3_BUCKET")
@@ -23,11 +24,22 @@ def _download_from_s3(key: str, path: str):
     )
     s3.download_file(S3_BUCKET, key, path)
 
-def _patch_job(job_id: str | None, stage: str, status: str, error_text: str | None = None):
+def _patch_job(job_id: str | None, stage: str, status: str, org_id: str | None = None, error_text: str | None = None):
     if not job_id:
         return
+    headers = {
+        "x-org-id": (org_id or DEFAULT_ORG),
+        "x-user-id": "worker",
+        "x-user-email": "worker@system",
+        "x-user-role": "system",
+    }
+    payload = {"type": stage, "status": status}
+    if error_text:
+        payload["error_text"] = error_text
     try:
-        requests.patch(f"{API_BASE}/jobs/{job_id}", json={"type": stage, "status": status, **({"error_text": error_text} if error_text else {})}, timeout=5)
+        resp = requests.patch(f"{API_BASE}/jobs/{job_id}", json=payload, headers=headers, timeout=5)
+        if resp.status_code >= 400:
+            print(f"[INDEX] patch job failed: {resp.status_code} {resp.text}")
     except Exception as e:
         print("[INDEX] patch job failed:", e)
 
@@ -148,7 +160,7 @@ def embed_and_store(task: dict):
         print("[INDEX] DATABASE_URL not set; skipping DB write")
         return
 
-    _patch_job(job_id, "index", "processing")
+    _patch_job(job_id, "index", "processing", task.get("org_id"))
     with psycopg.connect(DB_URL) as conn:
         try:
             org = task.get("org_id")
