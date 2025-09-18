@@ -29,29 +29,36 @@ export async function retrieveForAsk(prisma: any, openai: any, childId: string, 
   if (!isUuid(childId)) {
     return [];
   }
+
+  const scopedDocId = docId && isUuid(docId) ? docId : null;
+  const lexDocClause = scopedDocId ? " AND ds.document_id = $3::uuid" : "";
+  const lexParams = scopedDocId ? [query, childId, scopedDocId] : [query, childId];
+
   const lex = await prisma.$queryRawUnsafe(
     `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
             ts_rank_cd(ds.tsv, plainto_tsquery('english', $1)) AS "scoreLex"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id
-     WHERE d.child_id = $2::uuid ${docId ? `AND ds.document_id = '${docId}'` : ''}
+     WHERE d.child_id = $2::uuid${lexDocClause}
      ORDER BY "scoreLex" DESC
      LIMIT 30`,
-    query,
-    childId
+    ...lexParams
   ) as any as Span[];
 
   const emb = await openai.embeddings.create({ model: process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-small", input: query });
   const vecStr = `ARRAY[${emb.data[0].embedding.join(",")}]::vector`;
+  const vecDocClause = scopedDocId ? " AND ds.document_id = $2::uuid" : "";
+  const vecParams = scopedDocId ? [childId, scopedDocId] : [childId];
+
   const vec = await prisma.$queryRawUnsafe(
     `SELECT ds.id, ds.document_id, COALESCE(d.original_name, d.type) as doc_name, ds.page, ds.text,
             1 - (ds.embedding <=> ${vecStr}) AS "scoreVec"
      FROM doc_spans ds
      JOIN documents d ON d.id = ds.document_id
-     WHERE d.child_id = $1::uuid ${docId ? `AND ds.document_id = '${docId}'` : ''}
+     WHERE d.child_id = $1::uuid${vecDocClause}
      ORDER BY ds.embedding <=> ${vecStr}
      LIMIT 30`,
-    childId
+    ...vecParams
   ) as any as Span[];
 
   return rrfFuse(lex || [], vec || [], 60, top);
