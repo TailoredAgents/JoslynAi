@@ -619,15 +619,13 @@ def _select_eob_segments(conn, document_id: str, doc_name: str, limit: int = 40)
 
 def _render_denial_prompt(parsed: dict, segments: list[dict]) -> str:
     parts = ["Denial data extracted:", json.dumps(parsed or {}, ensure_ascii=False, indent=2)]
-    parts.append("
-Document excerpts (cite with the bracketed labels):")
+    parts.append("\nDocument excerpts (cite with the bracketed labels):")
     if segments:
         for seg in segments:
             parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
     else:
         parts.append("[No readable excerpts found]")
-    return "
-".join(parts)
+    return "\n".join(parts)
 
 
 def run():

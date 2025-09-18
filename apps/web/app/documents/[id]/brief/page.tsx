@@ -18,6 +18,13 @@ export default function BriefPage() {
 
   useEffect(() => {
     if (!docId) return;
+    if (childLoading) return;
+    if (!childId) {
+      setError("Child not found.");
+      setData(null);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     async function run() {
       setLoading(true);
@@ -42,7 +49,7 @@ export default function BriefPage() {
     return () => {
       cancelled = true;
     };
-  }, [docId]);
+  }, [docId, childId, childLoading]);
 
   const citationGroups = useMemo(() => {
     const groups = new Map<string, { doc_name: string; cites: { page: number; quote: string }[] }>();

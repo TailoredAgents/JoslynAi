@@ -51,12 +51,12 @@ ON CONFLICT (jurisdiction, kind) DO NOTHING;
 
 -- Seed demo child for default workspace
 INSERT INTO children (id, org_id, name, school_name, dob, created_at, slug)
-VALUES (gen_random_uuid(), 'demo-org', 'Demo Child', NULL, NULL, now(), 'demo-child')
+VALUES (gen_random_uuid(), '00000000-0000-4000-8000-000000000000', 'Demo Child', NULL, NULL, now(), 'demo-child')
 ON CONFLICT (slug) DO NOTHING;
 
 -- Seed entitlements for demo org (dev)
 INSERT INTO entitlements (id, org_id, plan, features_json)
-VALUES (gen_random_uuid(), 'demo-org', 'pro', '{"ask":true,"smart_attachments":true,"letters":{"render":true,"send":true},"brief":true}')
+VALUES (gen_random_uuid(), '00000000-0000-4000-8000-000000000000', 'pro', '{"ask":true,"smart_attachments":true,"letters":{"render":true,"send":true},"brief":true}')
 ON CONFLICT (org_id) DO NOTHING;
 
 -- Backfill org_id columns for multi-tenant hardening (idempotent)
@@ -106,3 +106,4 @@ UPDATE job_runs j
 SET org_id = c.org_id
 FROM children c
 WHERE j.child_id = c.id AND j.org_id IS NULL;
+

@@ -25,7 +25,7 @@ export default async function routes(app: FastifyInstance) {
     for (const k of Object.keys(answers || {})) (doc as any).text(`${k}: ${answers[k]}`);
     (doc as any).end();
     await new Promise((res) => stream.on("finish", res));
-    const { putObject } = await import("../lib/s3");
+    const { putObject } = await import("../lib/s3.js");
     const orgId = orgIdFromRequest(req as any);
     const pdfKey = `org/${orgId}/forms/${id}.pdf`;
     const buf = fs.readFileSync(tmp);
@@ -33,5 +33,6 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ pdf_uri: pdfKey });
   });
 }
+
 
 

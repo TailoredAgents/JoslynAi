@@ -78,7 +78,7 @@ export default async function routes(app: FastifyInstance) {
     (doc as any).end();
     await new Promise((res) => stream.on("finish", res));
 
-    const { putObject } = await import("../lib/s3");
+    const { putObject } = await import("../lib/s3.js");
     const pdfKey = `org/${org_id}/profiles/${child_id}.pdf`;
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
@@ -173,3 +173,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.status(400).send({ error: "unsupported" });
   });
 }
+
