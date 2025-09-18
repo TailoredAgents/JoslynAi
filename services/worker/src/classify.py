@@ -83,10 +83,10 @@ def heuristics(filename:str, sample:str = "") -> Classification:
 def classify_text(doc_text:str, filename:str) -> Classification:
   client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
   heur = heuristics(filename, doc_text)
-  prompt = f"Filename: {filename}
+  prompt = f"""Filename: {filename}
 
 Text sample:
-{(doc_text or '')[:4000]}"
+{(doc_text or '')[:4000]}"""
   try:
     resp = client.responses.create(
       model=MODEL,
@@ -103,4 +103,3 @@ Text sample:
   domains.extend(heur.get("domains") or [])
   domains = sorted(set(domains))
   return {"doc_type": doc_type, "domains": domains}
-

@@ -57,6 +57,11 @@ const app = Fastify({
   },
 });
 
+// Enforce JWT secret presence in production
+if ((process.env.NODE_ENV === "production") && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is required in production");
+}
+
 await app.register(fastifyRawBody, {
   field: "rawBody",
   global: false,
@@ -64,8 +69,28 @@ await app.register(fastifyRawBody, {
   runFirst: true,
 });
 
-await app.register(cors, { origin: (_origin, cb) => cb(null, true), credentials: true });
-await app.register(jwt, { secret: process.env.JWT_SECRET || "dev-secret" });
+// CORS: allow explicit origins via CORS_ORIGINS (comma-separated) or PUBLIC_BASE_URL; default open in dev
+const rawAllowed = (process.env.CORS_ORIGINS || process.env.PUBLIC_BASE_URL || "").trim();
+const allowedOrigins = rawAllowed ? rawAllowed.split(",").map((s) => s.trim()).filter(Boolean) : [];
+await app.register(cors, {
+  origin: (origin, cb) => {
+    // allow non-browser clients or when no explicit allowlist is set
+    if (!allowedOrigins.length || !origin) return cb(null, true);
+    if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) return cb(null, true);
+    try {
+      const originUrl = new URL(origin).origin;
+      const normalized = allowedOrigins.map((o) => {
+        try { return new URL(o).origin; } catch { return o; }
+      });
+      if (normalized.includes(originUrl)) return cb(null, true);
+    } catch {}
+    return cb(null, false);
+  },
+  credentials: true,
+});
+
+const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined as any : "dev-secret");
+await app.register(jwt, { secret: jwtSecret });
 await app.register(rateLimit, {
   max: 300,
   timeWindow: "1 minute",

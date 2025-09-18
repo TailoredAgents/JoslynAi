@@ -1060,8 +1060,7 @@ def run():
                             prompt_parts.append("Excerpts (cite labels):")
                             for seg in segments:
                                 prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
-                        prompt = "
-".join(prompt_parts)
+                        prompt = "\n".join(prompt_parts)
 
                         client = _openai()
                         model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
@@ -1285,11 +1284,8 @@ def run():
                         if segments:
                             prompt_parts.append("Excerpts (cite labels):")
                             for seg in segments:
-                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})
-{seg['text']}")
-                        prompt = "
-
-".join(prompt_parts)
+                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})\n{seg['text']}")
+                        prompt = "\n\n".join(prompt_parts)
 
                         client = _openai()
                         model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
@@ -1434,11 +1430,8 @@ def run():
                         if segments:
                             prompt_parts.append("Excerpts (cite labels):")
                             for seg in segments:
-                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})
-{seg['text']}")
-                        prompt = "
-
-".join(prompt_parts)
+                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})\n{seg['text']}")
+                        prompt = "\n\n".join(prompt_parts)
                         client = _openai()
                         model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
                         response = client.responses.create(
@@ -1532,8 +1525,7 @@ def run():
                             prompt_parts.append("Supporting excerpts:")
                             for seg in segments:
                                 prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
-                        prompt = "
-".join(prompt_parts)
+                        prompt = "\n".join(prompt_parts)
 
                         client = _openai()
                         model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
@@ -1660,8 +1652,7 @@ def run():
                             cover_lines.append(f"Why this matters: {appeal_reason}")
                         cover_lines.append("")
                         cover_lines.append("Please review the attached evidence and respond within the required timelines.")
-                        cover_letter = "
-".join(cover_lines)
+                        cover_letter = "\n".join(cover_lines)
                         conn.execute(
                             "INSERT INTO appeal_kit_items (appeal_kit_id, org_id, kind, status, payload_json, citations_json) VALUES (%s, %s, %s, %s, %s, %s)",
                             (kit_id, org_id, "cover_letter", "ready", Json({"title": "Appeal Letter", "body": cover_letter}), Json(citations))
@@ -1767,8 +1758,7 @@ def run():
                         prompt_parts.append("Excerpts:")
                         for seg in segments:
                             prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
-                        prompt = "
-".join(prompt_parts)
+                        prompt = "\n".join(prompt_parts)
                         client = _openai()
                         model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
                         response = client.responses.create(
