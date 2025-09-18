@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
+import { enqueue } from "../lib/redis.js";
 import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
@@ -14,7 +15,24 @@ export default async function routes(app: FastifyInstance) {
       }
       childIdValue = resolved;
     }
-    const job = await (prisma as any).job_runs.create({ data: { child_id: childIdValue, org_id: orgId, type, status: "pending", payload_json: payload || {} } });
+    const payloadData: Record<string, any> = payload && typeof payload === "object" ? payload : {};
+    const job = await (prisma as any).job_runs.create({ data: { child_id: childIdValue, org_id: orgId, type, status: "pending", payload_json: payloadData } });
+    const jobPayload = {
+      ...payloadData,
+      kind: type,
+      type,
+      job_id: job.id,
+      org_id: orgId,
+      child_id: childIdValue ?? payloadData.child_id ?? null,
+    };
+    try {
+      await enqueue(jobPayload);
+    } catch (err) {
+      (req as any).log?.error?.({ err, jobId: job.id }, "job_enqueue_failed");
+      await (prisma as any).job_runs.update({ where: { id: job.id }, data: { status: "error", error_text: "enqueue_failed" } }).catch(() => {});
+      return reply.status(500).send({ error: "enqueue_failed" });
+    }
+
     return reply.send({ job_id: job.id });
   });
 

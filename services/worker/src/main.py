@@ -921,116 +921,116 @@ def run():
                         except Exception as inner:
                             print("[WORKER] unable to mark diff error:", inner)
 
-elif kind == "denial_explain":
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        continue
-    eob_id = eob_id
-    document_id = task.get("document_id")
-    child_id = task.get("child_id")
-    org_id = task.get("org_id")
-    if not eob_id or not document_id:
-        continue
-    try:
-        with psycopg.connect(db_url) as conn:
-            _set_org_context(conn, org_id)
-            eob_row = conn.execute(
-                "SELECT parsed_json FROM eobs WHERE id=%s",
-                (eob_id,)
-            ).fetchone()
-            parsed = eob_row[0] if eob_row else None
-            doc_info = conn.execute(
-                "SELECT original_name, type FROM documents WHERE id=%s",
-                (document_id,)
-            ).fetchone()
-            doc_name = None
-            if doc_info:
-                doc_name = doc_info[0] or doc_info[1]
-            doc_name = doc_name or "Denial Letter"
+            elif kind == "denial_explain":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                eob_id = task.get("eob_id")
+                document_id = task.get("document_id")
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                if not eob_id or not document_id:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        eob_row = conn.execute(
+                            "SELECT parsed_json FROM eobs WHERE id=%s",
+                            (eob_id,)
+                        ).fetchone()
+                        parsed = eob_row[0] if eob_row else None
+                        doc_info = conn.execute(
+                            "SELECT original_name, type FROM documents WHERE id=%s",
+                            (document_id,)
+                        ).fetchone()
+                        doc_name = None
+                        if doc_info:
+                            doc_name = doc_info[0] or doc_info[1]
+                        doc_name = doc_name or "Denial Letter"
 
-            if not parsed:
-                conn.execute(
-                    """
-                    INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'error')
-                    ON CONFLICT (eob_id) DO UPDATE
-                      SET explanation_json = EXCLUDED.explanation_json,
-                          next_steps_json = EXCLUDED.next_steps_json,
-                          citations_json = EXCLUDED.citations_json,
-                          status = 'error',
-                          updated_at = NOW()
-                    """,
-                    (org_id, child_id, eob_id, document_id, Json({}), Json([]), Json([]))
-                )
-                conn.commit()
-                continue
+                        if not parsed:
+                            conn.execute(
+                                """
+                                INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, 'error')
+                                ON CONFLICT (eob_id) DO UPDATE
+                                  SET explanation_json = EXCLUDED.explanation_json,
+                                      next_steps_json = EXCLUDED.next_steps_json,
+                                      citations_json = EXCLUDED.citations_json,
+                                      status = 'error',
+                                      updated_at = NOW()
+                                """,
+                                (org_id, child_id, eob_id, document_id, Json({}), Json([]), Json([]))
+                            )
+                            conn.commit()
+                            continue
 
-            segments = _select_eob_segments(conn, document_id, doc_name, limit=40)
-            label_map = {seg["label"]: seg for seg in segments}
-            prompt = _render_denial_prompt(parsed, segments)
+                        segments = _select_eob_segments(conn, document_id, doc_name, limit=40)
+                        label_map = {seg["label"]: seg for seg in segments}
+                        prompt = _render_denial_prompt(parsed, segments)
 
-            client = _openai()
-            model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
-            response = client.responses.create(
-                model=model,
-                input=[
-                    {"role": "system", "content": DENIAL_TRANSLATE_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                response_format={"type": "json_schema", "json_schema": DENIAL_TRANSLATE_SCHEMA}
-            )
-            raw = (response.output[0].content[0].text if response.output and response.output[0].content else None)
-            if not raw:
-                raise ValueError("empty denial explanation response")
-            data = json.loads(raw)
-            explanation_json = {
-                "overview": data.get("overview", ""),
-                "codes": data.get("codes") or [],
-                "appeal_recommended": bool(data.get("appeal_recommended")),
-                "appeal_reason": data.get("appeal_reason")
-            }
-            next_steps_json = data.get("next_steps") or []
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": DENIAL_TRANSLATE_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": DENIAL_TRANSLATE_SCHEMA}
+                        )
+                        raw = (response.output[0].content[0].text if response.output and response.output[0].content else None)
+                        if not raw:
+                            raise ValueError("empty denial explanation response")
+                        data = json.loads(raw)
+                        explanation_json = {
+                            "overview": data.get("overview", ""),
+                            "codes": data.get("codes") or [],
+                            "appeal_recommended": bool(data.get("appeal_recommended")),
+                            "appeal_reason": data.get("appeal_reason")
+                        }
+                        next_steps_json = data.get("next_steps") or []
 
-            _resolve_citations(explanation_json.get("codes"), label_map)
-            _resolve_citations(next_steps_json, label_map)
+                        _resolve_citations(explanation_json.get("codes"), label_map)
+                        _resolve_citations(next_steps_json, label_map)
 
-            used_ids = set()
-            for collection in (explanation_json.get("codes") or []):
-                for span_id in collection.get("citations") or []:
-                    used_ids.add(span_id)
-            for step in next_steps_json or []:
-                for span_id in step.get("citations") or []:
-                    used_ids.add(span_id)
+                        used_ids = set()
+                        for collection in (explanation_json.get("codes") or []):
+                            for span_id in collection.get("citations") or []:
+                                used_ids.add(span_id)
+                        for step in next_steps_json or []:
+                            for span_id in step.get("citations") or []:
+                                used_ids.add(span_id)
 
-            citations_json = _build_citation_entries(label_map, used_ids)
+                        citations_json = _build_citation_entries(label_map, used_ids)
 
-            conn.execute(
-                """
-                INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'ready')
-                ON CONFLICT (eob_id) DO UPDATE
-                  SET explanation_json = EXCLUDED.explanation_json,
-                      next_steps_json = EXCLUDED.next_steps_json,
-                      citations_json = EXCLUDED.citations_json,
-                      status = 'ready',
-                      updated_at = NOW()
-                """,
-                (org_id, child_id, eob_id, document_id, Json(explanation_json), Json(next_steps_json), Json(citations_json))
-            )
-            conn.commit()
-    except Exception as e:
-        print("[WORKER] denial_explain failed:", e)
-        if db_url and eob_id:
-            try:
-                with psycopg.connect(os.getenv("DATABASE_URL")) as conn2:
-                    _set_org_context(conn2, org_id)
-                    conn2.execute(
-                        "UPDATE denial_explanations SET status='error', updated_at=NOW() WHERE eob_id=%s",
-                        (eob_id,)
-                    )
-                    conn2.commit()
-            except Exception as inner:
-                print("[WORKER] unable to mark denial explanation error:", inner)
+                        conn.execute(
+                            """
+                            INSERT INTO denial_explanations (org_id, child_id, eob_id, document_id, explanation_json, next_steps_json, citations_json, status)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, 'ready')
+                            ON CONFLICT (eob_id) DO UPDATE
+                              SET explanation_json = EXCLUDED.explanation_json,
+                                  next_steps_json = EXCLUDED.next_steps_json,
+                                  citations_json = EXCLUDED.citations_json,
+                                  status = 'ready',
+                                  updated_at = NOW()
+                            """,
+                            (org_id, child_id, eob_id, document_id, Json(explanation_json), Json(next_steps_json), Json(citations_json))
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] denial_explain failed:", e)
+                    if db_url and eob_id:
+                        try:
+                            with psycopg.connect(db_url) as conn2:
+                                _set_org_context(conn2, org_id)
+                                conn2.execute(
+                                    "UPDATE denial_explanations SET status='error', updated_at=NOW() WHERE eob_id=%s",
+                                    (eob_id,)
+                                )
+                                conn2.commit()
+                        except Exception as inner:
+                            print("[WORKER] unable to mark denial explanation error:", inner)
 
 
 
@@ -1838,3 +1838,4 @@ elif kind == "denial_explain":
 
 if __name__ == "__main__":
     run()
+
