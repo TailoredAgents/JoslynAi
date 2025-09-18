@@ -30,6 +30,21 @@ function loadTemplate(kind: string) {
   return { meta: parsed.data as any, body: parsed.content };
 }
 
+function buildAttachmentUrl(key: string) {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) {
+    throw new Error("S3_BUCKET not configured");
+  }
+  let endpoint = process.env.S3_ENDPOINT;
+  if (!endpoint) {
+    return `https://${bucket}.s3.amazonaws.com/${key}`;
+  }
+  if (!/^https?:\/\//i.test(endpoint)) {
+    endpoint = `https://${endpoint}`;
+  }
+  const base = endpoint.endsWith("/") ? endpoint : `${endpoint}/`;
+  return new URL(`${bucket}/${key}`, base).toString();
+}
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/letter/draft", async (req, reply) => {
@@ -84,7 +99,9 @@ export default async function routes(app: FastifyInstance) {
 
   app.post("/tools/letter/render", async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
-    await requireEntitlement(req, reply, "letters.render");
+    if (!(await requireEntitlement(req, reply, "letters.render"))) {
+      return;
+    }
     const { letter_id } = (req.body as any);
     const letter = await (prisma as any).letters.findUnique({ where: { id: letter_id } });
     if (!letter) return reply.status(404).send({ error: "letter not found" });
@@ -109,7 +126,9 @@ export default async function routes(app: FastifyInstance) {
 
   app.post("/tools/letter/send", async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
-    await requireEntitlement(req, reply, "letters.send");
+    if (!(await requireEntitlement(req, reply, "letters.send"))) {
+      return;
+    }
     const org_id = (req as any).user?.org_id || "demo-org";
     // @ts-ignore requireRole from RBAC
     if (typeof (req as any).requireRole === 'function') {
@@ -126,8 +145,7 @@ export default async function routes(app: FastifyInstance) {
       secure: false,
     });
 
-    const { S3_BUCKET } = process.env as any;
-    const link = `https://${(process.env.S3_ENDPOINT || '').replace(/^https?:\/\//,"")}/${S3_BUCKET}/${letter.pdf_uri}`;
+    const link = buildAttachmentUrl(letter.pdf_uri);
 
     await transporter.sendMail({
       from: process.env.MAIL_FROM || "no-reply@joslyn-ai.local",

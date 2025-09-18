@@ -60,7 +60,9 @@ const AskAnswerSchema = {
 export default async function routes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string }, Body: { query: string, lang?: string } }>("/children/:id/ask", async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
-    await requireEntitlement(req, reply, "ask");
+    if (!(await requireEntitlement(req, reply, "ask"))) {
+      return;
+    }
     const { query, lang = "en" } = req.body;
     const orgId = orgIdFromRequest(req);
     const childIdInput = req.params.id;

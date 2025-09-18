@@ -398,7 +398,7 @@ model share_links {
 
 model child_profile {
   id          String   @id @default(uuid()) @db.Uuid
-  child_id    String
+  child_id    String   @unique @db.Uuid
   org_id      String?  @db.Uuid
   profile_json Json
   created_at  DateTime @default(now())

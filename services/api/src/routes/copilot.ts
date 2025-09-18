@@ -107,7 +107,7 @@ function detectIntent(query: string): { intent: string; tags: string[]; actions:
     return { intent: "advocacy.outline", tags: ["iep", "eval_report"], actions: [{ type: "open_tab", label: "Open advocacy outline", href: "/advocacy/outlines" }] };
   }
   if (/smart/.test(normalized) && /goal/.test(normalized)) {
-    return { intent: "goals.smart", tags: ["iep"], actions: [{ type: "open_tab", label: "Score SMART goal", href: "/letters/goals" }] };
+    return { intent: "goals.smart", tags: ["iep"], actions: [{ type: "open_tab", label: "Score SMART goal", href: "/goals" }] };
   }
   if ((/summary|explain/.test(normalized)) && (/report|evaluation/.test(normalized))) {
     return { intent: "research.explain", tags: [], actions: [{ type: "open_tab", label: "Open research summaries", href: "/research" }] };
