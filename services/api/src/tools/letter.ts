@@ -10,18 +10,45 @@ import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 import { orgIdFromRequest } from "../lib/child.js";
 
 const TPL_DIR = path.join(process.cwd(), "packages/core/templates/letters");
+const TPL_DIR_RESOLVED = path.resolve(TPL_DIR);
+const TEMPLATE_NAME_REGEX = /^[a-z0-9_-]+$/i;
 
 function loadTemplate(kind: string) {
-  const file = fs.readFileSync(path.join(TPL_DIR, `${kind}.md`), "utf8");
+  const candidate = (kind || "").toString().trim();
+  if (!TEMPLATE_NAME_REGEX.test(candidate)) {
+    throw Object.assign(new Error("invalid_template"), { code: "invalid_template" });
+  }
+  const target = path.resolve(TPL_DIR_RESOLVED, `${candidate}.md`);
+  if (!target.startsWith(TPL_DIR_RESOLVED + path.sep)) {
+    throw Object.assign(new Error("invalid_template"), { code: "invalid_template" });
+  }
+  if (!fs.existsSync(target)) {
+    throw Object.assign(new Error("template_not_found"), { code: "template_not_found" });
+  }
+  const file = fs.readFileSync(target, "utf8");
   const parsed = matter(file);
   return { meta: parsed.data as any, body: parsed.content };
 }
+
 
 export default async function routes(app: FastifyInstance) {
   app.post("/tools/letter/draft", async (req, reply) => {
     const { kind, merge_fields, lang = "en" } = (req.body as any);
     const orgId = orgIdFromRequest(req as any);
-    const { meta, body } = loadTemplate(kind);
+    let template;
+    try {
+      template = loadTemplate(kind);
+    } catch (err: any) {
+      const code = err?.code;
+      if (code === "invalid_template") {
+        return reply.status(400).send({ error: "invalid_template" });
+      }
+      if (code === "template_not_found") {
+        return reply.status(404).send({ error: "template_not_found" });
+      }
+      throw err;
+    }
+    const { meta, body } = template;
     for (const f of (meta.required || [])) {
       if (merge_fields?.[f] == null) return reply.status(400).send({ error: `Missing field: ${f}` });
     }
@@ -114,4 +141,6 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 }
+
+
 

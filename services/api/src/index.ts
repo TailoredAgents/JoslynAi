@@ -45,6 +45,7 @@ import rbac from "./mw/rbac.js";
 import jobsRoutes from "./routes/jobs.js";
 import feedbackRoutes from "./routes/feedback.js";
 import consentRoutes from "./routes/consent.js";
+import realtimeRoutes from "./realtime/index.js";
 
 const app = Fastify({
   logger: {
@@ -113,6 +114,7 @@ await app.register(billingUi);
 await app.register(invitesRoutes);
 await app.register(docUrlRoutes);
 await app.register(jobsRoutes);
+await app.register(realtimeRoutes);
 await app.register(feedbackRoutes);
 await app.register(consentRoutes);
 

@@ -7,7 +7,7 @@ import requests
 
 EMBED_MODEL = os.getenv("OPENAI_EMBEDDINGS_MODEL", "text-embedding-3-small")
 DB_URL = os.getenv("DATABASE_URL")
-API_BASE = os.getenv("API_BASE_URL", "http://localhost:8080")
+API_BASE = os.getenv("API_BASE_URL") or os.getenv("API_URL") or "http://localhost:8080"
 DEFAULT_ORG = os.getenv("DEMO_ORG_ID", "00000000-0000-4000-8000-000000000000")
 
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT")
@@ -37,7 +37,8 @@ def _patch_job(job_id: str | None, stage: str, status: str, org_id: str | None =
     if error_text:
         payload["error_text"] = error_text
     try:
-        resp = requests.patch(f"{API_BASE}/jobs/{job_id}", json=payload, headers=headers, timeout=5)
+        base = API_BASE.rstrip("/")
+        resp = requests.patch(f"{base}/jobs/{job_id}", json=payload, headers=headers, timeout=5)
         if resp.status_code >= 400:
             print(f"[INDEX] patch job failed: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -189,3 +190,4 @@ def embed_and_store(task: dict):
         except Exception:
             pass
         conn.commit()
+
