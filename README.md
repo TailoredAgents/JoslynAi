@@ -80,6 +80,12 @@ Prompts & templates
 
 - See `packages/core/prompts/*` and `packages/core/templates/*`.
 
+Telemetry & memory
+
+- Copilot runs are recorded in `agent_runs` with a `feature` tag.
+- Conversation excerpts persist per child in `copilot_conversations` for quick follow-ups.
+- Admin usage dashboards (`/admin/usage`) surface costs, tokens, and run counts.
+
 ## Multi-tenancy
 
 - Requests are org-scoped. In development, the API reads the `x-org-id` header (defaults to `demo-org`). In production, the authenticated user/session determines org.
