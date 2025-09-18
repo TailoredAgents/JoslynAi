@@ -453,6 +453,13 @@ ADVOCACY_OUTLINE_SYSTEM_PROMPT = (
     "Include citations by referencing the excerpt labels (e.g., [O001]) that justify each entry."
 )
 
+SAFETY_PHRASE_SYSTEM_PROMPT = (
+    "You are Joslyn, a special education advocate drafting supportive phrases to guide caregivers. "
+    "Use the provided context and tagged events to suggest trauma-informed wording in English and Spanish. "
+    "Keep each phrase concise (<=40 words), empathetic, and actionable. "
+    "Return entries grouped by tag, each with English and Spanish text and optional rationale."
+)
+
 ONE_PAGER_SCHEMA = {
     "name": "TeacherOnePager",
     "strict": True,
@@ -1220,6 +1227,114 @@ elif kind == "denial_explain":
                                 conn2.commit()
                     except Exception as inner:
                         print("[WORKER] build_advocacy_outline error mark failed:", inner)
+            elif kind == "seed_safety_phrases":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                phrases = task.get("phrases")
+                org_id = task.get("org_id")
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        if isinstance(phrases, list):
+                            for phrase in phrases:
+                                conn.execute(
+                                    """
+                                    INSERT INTO safety_phrases (org_id, tag, contexts, content_json, status)
+                                    VALUES (%s, %s, %s, %s, %s)
+                                    ON CONFLICT (id) DO NOTHING
+                                    """,
+                                    (
+                                        phrase.get("org_id") or org_id,
+                                        phrase.get("tag") or "general",
+                                        phrase.get("contexts") or [],
+                                        Json(phrase.get("content") or {}),
+                                        phrase.get("status") or "active",
+                                    ),
+                                )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] seed_safety_phrases failed:", e)
+
+            elif kind == "generate_safety_phrase":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                tag = task.get("tag") or "general"
+                doc_id = task.get("document_id")
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        doc_name = "Document"
+                        segments = []
+                        if doc_id:
+                            doc_info = conn.execute(
+                                "SELECT original_name FROM documents WHERE id=%s",
+                                (doc_id,),
+                            ).fetchone()
+                            if doc_info:
+                                doc_name = doc_info[0] or doc_name
+                            segments = _select_segments(conn, doc_id, "S", doc_name, limit=30)
+                        prompt_parts = [
+                            f"Tag: {tag}",
+                            f"Child ID: {child_id}",
+                            "Context cues:",
+                        ]
+                        for context in (task.get("contexts") or []):
+                            prompt_parts.append(f"- {context}")
+                        if segments:
+                            prompt_parts.append("Excerpts (cite labels):")
+                            for seg in segments:
+                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})
+{seg['text']}")
+                        prompt = "
+
+".join(prompt_parts)
+
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": SAFETY_PHRASE_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={
+                                "type": "json_schema",
+                                "json_schema": {
+                                    "name": "SafetyPhrase",
+                                    "strict": True,
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "phrase_en": {"type": "string"},
+                                            "phrase_es": {"type": "string", "default": ""},
+                                            "rationale": {"type": ["string", "null"], "default": None},
+                                        },
+                                        "required": ["phrase_en"],
+                                        "additionalProperties": False,
+                                    },
+                                },
+                            },
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty safety phrase response")
+                        data = json.loads(raw)
+                        content = {
+                            "phrase_en": data.get("phrase_en") or "",
+                            "phrase_es": data.get("phrase_es") or "",
+                            "rationale": data.get("rationale") or None,
+                        }
+                        conn.execute(
+                            "INSERT INTO safety_phrases (org_id, tag, contexts, content_json, status) VALUES (%s, %s, %s, %s, %s)",
+                            (org_id, tag, task.get("contexts") or [], Json(content), "active"),
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] generate_safety_phrase failed:", e)
             elif kind == "build_one_pager":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:

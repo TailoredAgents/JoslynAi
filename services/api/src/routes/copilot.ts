@@ -42,6 +42,9 @@ function detectIntent(query: string): { intent: string; tags: string[]; actions:
   if (/one[ -]?pager|onepager|snapshot/.test(normalized)) {
     return { intent: "one_pager.generate", tags: ["iep", "eval_report"], actions: [{ type: "open_tab", label: "Open one-pagers", href: "/one-pagers" }] };
   }
+  if (/what should i say|how should i say|phrase|wording/.test(normalized)) {
+    return { intent: "safety.phrase", tags: ["iep", "eval_report"], actions: [{ type: "open_tab", label: "Open safety phrases", href: "/safety/phrases" }] };
+  }
   if (/denial|eob|explain code/.test(normalized)) {
     return { intent: "denial.translate", tags: ["denial_letter", "eob"], actions: [{ type: "open_tab", label: "Start appeal kit", href: "/appeals" }] };
   }
@@ -704,6 +707,68 @@ if (intentInfo.intent === "goals.smart") {
         follow_ups: ["Draft mediation letter", "Explain requested remedies"],
         summary: outlineJson.summary || null,
         artifacts: [{ kind: "advocacy_outline", outline_id: outline.id }],
+      });
+    }
+
+    if (intentInfo.intent === "safety.phrase") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      const normalized = query.toLowerCase();
+      let tag = "general";
+      if (/minutes|time/.test(normalized)) tag = "minutes_down";
+      else if (/appeal|denial/.test(normalized)) tag = "appeal";
+      else if (/tone|support/.test(normalized)) tag = "tone_support";
+
+      const phrases = await (prisma as any).safety_phrases.findMany({
+        where: {
+          tag,
+          status: "active",
+          OR: [{ org_id: orgId }, { org_id: null }],
+        },
+        orderBy: { updated_at: "desc" },
+        take: 3,
+      });
+
+      if (!phrases?.length) {
+        await enqueue({
+          kind: "generate_safety_phrase",
+          child_id: childId,
+          org_id: orgId,
+          tag,
+          contexts: [],
+        });
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I am drafting phrasing suggestions now. Check the safety phrases tab shortly."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh safety phrases"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const top = phrases[0];
+      const content = top.content_json || {};
+      const lines: string[] = [];
+      if (content.phrase_en) lines.push(content.phrase_en);
+      if (content.phrase_es) lines.push(`ES: ${content.phrase_es}`);
+      if (content.rationale) lines.push(`Why it helps: ${content.rationale}`);
+      if (!lines.length) lines.push("Here is a gentle suggestion you can adapt.");
+      lines.push("Open the safety phrases tab for more tone options and to queue new wording.");
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(lines.join("\n\n")),
+        citations: [],
+        actions,
+        follow_ups: ["Queue a new phrase", "Share with the team"],
+        summary: content.phrase_en || null,
+        artifacts: [{ kind: "safety_phrase", tag }],
       });
     }
 
