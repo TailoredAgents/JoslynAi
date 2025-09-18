@@ -453,6 +453,59 @@ ADVOCACY_OUTLINE_SYSTEM_PROMPT = (
     "Include citations by referencing the excerpt labels (e.g., [O001]) that justify each entry."
 )
 
+ONE_PAGER_SCHEMA = {
+    "name": "TeacherOnePager",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "default": ""},
+            "intro_en": {"type": "string", "default": ""},
+            "intro_es": {"type": "string", "default": ""},
+            "sections": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "heading": {"type": "string"},
+                        "body_en": {"type": "string"},
+                        "body_es": {"type": "string"},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["heading", "body_en", "body_es"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "strategies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label_en": {"type": "string"},
+                        "label_es": {"type": "string"},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["label_en", "label_es"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "closing_en": {"type": "string", "default": ""},
+            "closing_es": {"type": "string", "default": ""}
+        },
+        "required": ["intro_en", "intro_es"],
+        "additionalProperties": False
+    }
+}
+
+ONE_PAGER_SYSTEM_PROMPT = (
+    "You are Joslyn, a special education advocate creating a bilingual one-pager for school staff. "
+    "Use the provided child context, supports, and excerpts to draft concise sections in English and Spanish. "
+    "Focus on strengths, key supports, and collaboration tips. "
+    "Cite evidence using the excerpt labels (e.g., [W001]) wherever you reference evaluation data."
+)
+
 
 def _select_research_segments(conn, document_id: str, doc_name: str, limit: int = 60):
     rows = conn.execute("SELECT id, page, text FROM doc_spans WHERE document_id=%s ORDER BY page ASC LIMIT %s", (document_id, limit * 3)).fetchall()
@@ -1167,6 +1220,177 @@ elif kind == "denial_explain":
                                 conn2.commit()
                     except Exception as inner:
                         print("[WORKER] build_advocacy_outline error mark failed:", inner)
+            elif kind == "build_one_pager":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                one_pager_id = task.get("one_pager_id")
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                audience = task.get("audience") or "teacher"
+                document_id = task.get("document_id")
+                language_primary = task.get("language_primary") or "en"
+                language_secondary = task.get("language_secondary") or "es"
+                if not one_pager_id or not child_id:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        row = conn.execute(
+                            "SELECT language_primary, language_secondary FROM one_pagers WHERE id=%s",
+                            (one_pager_id,)
+                        ).fetchone()
+                        if not row:
+                            continue
+                        language_primary = row[0] or language_primary
+                        language_secondary = row[1] or language_secondary
+                        child_row = conn.execute(
+                            "SELECT name FROM children WHERE id=%s",
+                            (child_id,)
+                        ).fetchone()
+                        child_name = child_row[0] if child_row else "the student"
+                        profile_row = conn.execute(
+                            "SELECT profile_json FROM child_profile WHERE child_id=%s",
+                            (child_id,)
+                        ).fetchone()
+                        profile_json = profile_row[0] if profile_row else {}
+                        rec_row = conn.execute(
+                            "SELECT recommendations_json, citations_json FROM recommendations WHERE child_id=%s AND status='ready' ORDER BY updated_at DESC LIMIT 1",
+                            (child_id,)
+                        ).fetchone()
+                        recommendations = rec_row[0] if rec_row else []
+                        rec_citations = rec_row[1] if rec_row else []
+                        doc_name_row = None
+                        if document_id:
+                            doc_name_row = conn.execute(
+                                "SELECT original_name FROM documents WHERE id=%s",
+                                (document_id,)
+                            ).fetchone()
+                        document_name = (doc_name_row[0] if doc_name_row else None) or "Document"
+                        span_ids = set()
+                        for item in recommendations or []:
+                            for span_id in item.get("citations") or []:
+                                if span_id:
+                                    span_ids.add(str(span_id))
+                        for cite in rec_citations or []:
+                            if cite.get("span_id"):
+                                span_ids.add(str(cite["span_id"]))
+                        segments = []
+                        label_map = {}
+                        if span_ids:
+                            span_rows = conn.execute(
+                                "SELECT ds.id::text, ds.page, ds.text, ds.document_id, d.original_name FROM doc_spans ds JOIN documents d ON d.id = ds.document_id WHERE ds.id = ANY(%s)",
+                                (list(span_ids),)
+                            ).fetchall()
+                            for idx, span in enumerate(span_rows, start=1):
+                                label = f"W{idx:03d}"
+                                segment = {
+                                    "label": label,
+                                    "span_id": span[0],
+                                    "page": span[1],
+                                    "text": (span[2] or "").strip()[:600],
+                                    "document_id": span[3],
+                                    "doc_name": span[4] or "Document"
+                                }
+                                segments.append(segment)
+                                label_map[label] = segment
+                        if not segments and document_id:
+                            doc_segments = _select_segments(conn, document_id, "W", document_name, limit=40)
+                            for seg in doc_segments:
+                                label_map[seg["label"]] = seg
+                            segments = doc_segments
+                        if not document_id and segments:
+                            document_id = segments[0].get("document_id")
+                        strengths = profile_json.get("strengths") or []
+                        sensory = profile_json.get("sensory_supports") or []
+                        communications = profile_json.get("communication") or profile_json.get("communication_notes") or []
+                        prompt_parts = [
+                            f"Child: {child_name}",
+                            f"Audience: {audience}",
+                            f"Primary language: {language_primary}",
+                            f"Secondary language: {language_secondary}",
+                            "Strengths: " + ("; ".join(strengths) if isinstance(strengths, list) else str(strengths)),
+                            "Sensory supports: " + ("; ".join(sensory) if isinstance(sensory, list) else str(sensory)),
+                            "Communication notes: " + ("; ".join(communications) if isinstance(communications, list) else str(communications)),
+                            "Recommended supports:"
+                        ]
+                        for item in recommendations or []:
+                            prompt_parts.append(
+                                f"- {item.get('recommendation') or item.get('support') or ''}"
+                            )
+                        if segments:
+                            prompt_parts.append("Excerpts (cite labels):")
+                            for seg in segments:
+                                prompt_parts.append(f"[{seg['label']}] {seg['doc_name']} (p.{seg['page']})
+{seg['text']}")
+                        prompt = "
+
+".join(prompt_parts)
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": ONE_PAGER_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": ONE_PAGER_SCHEMA}
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty one pager response")
+                        data = json.loads(raw)
+                        sections = data.get("sections") or []
+                        strategies = data.get("strategies") or []
+                        _resolve_labels(sections, label_map)
+                        _resolve_labels(strategies, label_map)
+                        used_ids = set()
+                        for collection in (sections, strategies):
+                            for entry in collection:
+                                for span_id in entry.get("citations") or []:
+                                    used_ids.add(span_id)
+                        citations_json = _build_citation_entries(label_map, used_ids)
+                        content = {
+                            "title": data.get("title") or f"{child_name} support snapshot",
+                            "intro_en": data.get("intro_en") or "",
+                            "intro_es": data.get("intro_es") or "",
+                            "sections": sections,
+                            "strategies": strategies,
+                            "closing_en": data.get("closing_en") or "",
+                            "closing_es": data.get("closing_es") or "",
+                            "audience": audience,
+                            "document_id": document_id,
+                            "language_primary": language_primary,
+                            "language_secondary": language_secondary
+                        }
+                        status_value = "ready" if sections or strategies else "empty"
+                        conn.execute(
+                            """
+                            UPDATE one_pagers
+                               SET content_json=%s,
+                                   citations_json=%s,
+                                   status=%s,
+                                   language_primary=%s,
+                                   language_secondary=%s,
+                                   updated_at=NOW()
+                             WHERE id=%s
+                            """,
+                            (Json(content), Json(citations_json), status_value, language_primary, language_secondary, one_pager_id)
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] build_one_pager failed:", e)
+                    try:
+                        if db_url:
+                            with psycopg.connect(db_url) as conn2:
+                                _set_org_context(conn2, org_id)
+                                conn2.execute(
+                                    "UPDATE one_pagers SET status='error', updated_at=NOW() WHERE id=%s",
+                                    (one_pager_id,)
+                                )
+                                conn2.commit()
+                    except Exception as inner:
+                        print("[WORKER] build_one_pager error mark failed:", inner)
             elif kind == "goal_smart":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:

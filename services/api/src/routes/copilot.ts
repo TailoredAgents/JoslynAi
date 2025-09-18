@@ -39,6 +39,9 @@ function detectIntent(query: string): { intent: string; tags: string[]; actions:
   if (/accommodations?|services?|supports?/.test(normalized) && /request|should/.test(normalized)) {
     return { intent: "recommendations.supports", tags: ["eval_report", "iep"], actions: [{ type: "open_tab", label: "Review recommendations", href: "/recommendations" }] };
   }
+  if (/one[ -]?pager|onepager|snapshot/.test(normalized)) {
+    return { intent: "one_pager.generate", tags: ["iep", "eval_report"], actions: [{ type: "open_tab", label: "Open one-pagers", href: "/one-pagers" }] };
+  }
   if (/denial|eob|explain code/.test(normalized)) {
     return { intent: "denial.translate", tags: ["denial_letter", "eob"], actions: [{ type: "open_tab", label: "Start appeal kit", href: "/appeals" }] };
   }
@@ -701,6 +704,152 @@ if (intentInfo.intent === "goals.smart") {
         follow_ups: ["Draft mediation letter", "Explain requested remedies"],
         summary: outlineJson.summary || null,
         artifacts: [{ kind: "advocacy_outline", outline_id: outline.id }],
+      });
+    }
+
+    if (intentInfo.intent === "one_pager.generate") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      async function selectDocumentId() {
+        const evalDoc = await (prisma as any).documents.findFirst({
+          where: { child_id: childId, type: "eval_report" },
+          orderBy: [{ created_at: "desc" }],
+          select: { id: true },
+        });
+        if (evalDoc?.id) return evalDoc.id;
+        const iepDoc = await (prisma as any).documents.findFirst({
+          where: { child_id: childId, type: "iep" },
+          orderBy: [{ version: "desc" }, { created_at: "desc" }],
+          select: { id: true },
+        });
+        if (iepDoc?.id) return iepDoc.id;
+        const anyDoc = await (prisma as any).documents.findFirst({
+          where: { child_id: childId },
+          orderBy: [{ created_at: "desc" }],
+          select: { id: true },
+        });
+        return anyDoc?.id || null;
+      }
+
+      async function queueOnePager() {
+        const documentId = await selectDocumentId();
+        const record = await (prisma as any).one_pagers.create({
+          data: {
+            child_id: childId,
+            org_id: orgId,
+            audience: "teacher",
+            language_primary: "en",
+            language_secondary: "es",
+            content_json: {},
+            citations_json: [],
+            status: "pending",
+          },
+        });
+        await enqueue({
+          kind: "build_one_pager",
+          one_pager_id: record.id,
+          child_id: childId,
+          org_id: orgId,
+          audience: "teacher",
+          document_id: documentId,
+          language_primary: "en",
+          language_secondary: "es",
+        });
+        return record;
+      }
+
+      const onePager = await (prisma as any).one_pagers.findFirst({
+        where: { child_id: childId },
+        orderBy: { updated_at: "desc" },
+      });
+
+      if (!onePager) {
+        const queued = await queueOnePager();
+        if (queued) {
+          return reply.send({
+            intent: intentInfo.intent,
+            answer: withDisclaimer("I am drafting that one-pager now. Check the one-pagers tab shortly."),
+            citations: [],
+            actions,
+            follow_ups: ["Refresh one-pagers"],
+            summary: null,
+            artifacts: [],
+          });
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("Upload an evaluation or IEP and I can build a bilingual snapshot."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload supporting documents"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (onePager.status === "pending") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I'm still pulling that information together. Refresh the one-pagers tab in a moment."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh one-pagers"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (onePager.status === "error") {
+        await queueOnePager();
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I hit a snag formatting that one-pager. I queued it again, so check back in the one-pagers tab."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh one-pagers"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const content = onePager.content_json || {};
+      const citationsRaw = Array.isArray(onePager.citations_json) ? onePager.citations_json : [];
+      const citations = citationsRaw.map((entry: any, idx: number) => ({
+        index: idx + 1,
+        document_id: entry.document_id,
+        doc_name: entry.doc_name,
+        page: entry.page,
+        snippet: entry.snippet,
+      }));
+
+      const lines: string[] = [];
+      if (content.title) lines.push(content.title);
+      if (content.intro_en) lines.push(`English intro: ${content.intro_en}`);
+      if (content.intro_es) lines.push(`Spanish intro: ${content.intro_es}`);
+      (content.sections || []).slice(0, 2).forEach((section: any, idx: number) => {
+        const firstCitation = (section.citations || [])[0];
+        const label = citationsRaw.findIndex((entry: any) => String(entry.span_id) === String(firstCitation));
+        const badge = label >= 0 ? ` [${label + 1}]` : "";
+        lines.push(`Section ${idx + 1}: ${section.heading}${badge}`);
+      });
+      if (!lines.length) {
+        lines.push("I drafted the outline, but I need a bit more evidence before sharing snippets.");
+      } else {
+        lines.push("Open the one-pagers tab to review the bilingual version and copy the share link.");
+      }
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(lines.join("\n\n")),
+        citations,
+        actions,
+        follow_ups: ["Publish one-pager", "Draft follow-up email"],
+        summary: content.intro_en || null,
+        artifacts: [{ kind: "one_pager", one_pager_id: onePager.id }],
       });
     }
 
