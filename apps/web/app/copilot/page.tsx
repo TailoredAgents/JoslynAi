@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBootstrappedChild } from "../../lib/use-child";
 
@@ -57,13 +57,7 @@ export default function CopilotPage() {
   const childId = child?.id ?? null;
   const childReady = childId !== null;
 
-  useEffect(() => {
-    const currentId = childId;
-    if (!currentId) return;
-    pollJobs(currentId);
-  }, [childId]);
-
-  async function pollJobs(targetId?: string) {
+  const pollJobs = useCallback(async (targetId?: string) => {
     const id = targetId ?? childId;
     if (!id) return;
     try {
@@ -73,7 +67,13 @@ export default function CopilotPage() {
     } catch (err) {
       console.error(err);
     }
-  }
+  }, [childId]);
+
+  useEffect(() => {
+    const currentId = childId;
+    if (!currentId) return;
+    pollJobs(currentId);
+  }, [childId, pollJobs]);
 
   async function handleUpload(evt: React.FormEvent<HTMLFormElement>) {
     evt.preventDefault();
@@ -162,7 +162,7 @@ export default function CopilotPage() {
                   <span className="font-semibold text-brand-600">[{c.index}]</span>
                   <span className="font-medium text-slate-600"> {c.doc_name || "Document"}</span>
                   {c.page ? <span className="text-slate-500"> (p.{c.page})</span> : null}
-                  {c.snippet ? <p className="mt-1 text-[11px] text-slate-500">"{c.snippet}"</p> : null}
+                  {c.snippet ? <p className="mt-1 text-[11px] text-slate-500">&quot;{c.snippet}&quot;</p> : null}
                 </li>
               ))}
             </ul>
@@ -368,3 +368,4 @@ export default function CopilotPage() {
     </div>
   );
 }
+

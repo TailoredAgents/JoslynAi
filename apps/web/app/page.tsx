@@ -216,7 +216,7 @@ export default function HomePage() {
               <span className="mt-2 block font-semibold text-slate-800">? Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              "Our team trusts the citations and loves that the letters sound human?because they are."<br />
+              &quot;Our team trusts the citations and loves that the letters sound human—because they are.&quot;<br />
               <span className="mt-2 block font-semibold text-slate-800">? Marisol, special education director</span>
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-r from-brand-500 via-brand-400 to-blush-400 p-10 text-white shadow-uplift">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Parents + advocates</p>
-          <h2 className="text-3xl font-heading">Let's make every meeting feel collaborative, not combative.</h2>
+          <h2 className="text-3xl font-heading">Let&apos;s make every meeting feel collaborative, not combative.</h2>
           <p className="text-sm text-white/80">Invite your team, share bilingual summaries, and walk in knowing the data has your back.</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/onboarding" className="inline-flex items-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-600 shadow-sm transition hover:bg-slate-100">
@@ -275,6 +275,7 @@ export default function HomePage() {
     </div>
   );
 }
+
 
 
 

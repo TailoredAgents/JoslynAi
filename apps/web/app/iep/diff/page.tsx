@@ -1,6 +1,7 @@
-"use client";
+Ôªø"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useBootstrappedChild } from "../../../lib/use-child";
@@ -128,7 +129,7 @@ function StepHeader({ step, title, description, active }: { step: number; title:
   );
 }
 
-export default function IepDiffPage() {
+function IepDiffPageInner() {
   const { child, loading: childLoading, error: childError, refresh: refreshChild } = useBootstrappedChild();
   const childId = child?.id ?? null;
   const childReady = Boolean(childId);
@@ -169,7 +170,7 @@ export default function IepDiffPage() {
     }
   }
 
-  async function regenerate(targetId: string) {
+  const regenerate = useCallback(async (targetId: string) => {
     setRegenerating(true);
     try {
       await fetch(`${API_BASE}/children/${targetId}/iep/diff/regenerate`, {
@@ -184,8 +185,9 @@ export default function IepDiffPage() {
     } finally {
       setRegenerating(false);
     }
-  }
+  }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!childId) return;
     fetchSummary(childId);
@@ -193,7 +195,7 @@ export default function IepDiffPage() {
     if (autoTrigger) {
       regenerate(childId);
     }
-  }, [childId, autoTrigger]);
+  }, [childId, autoTrigger, regenerate]);
 
   const latestSummary = useMemo(() => {
     if (!summary) return null;
@@ -246,7 +248,7 @@ export default function IepDiffPage() {
             onClick={() => regenerate(childId)}
             disabled={regenerating || isLoading}
           >
-            {regenerating ? "RegeneratingÖ" : "Refresh diff"}
+            {regenerating ? "Regenerating‚Ä¶" : "Refresh diff"}
           </button>
         </div>
         <p className="mt-2 max-w-3xl text-sm text-brand-50">
@@ -275,7 +277,7 @@ export default function IepDiffPage() {
                   <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">{summary.summary}</p>
                 </div>
               ) : (
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No summary yetórun the comparison.</div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No summary yet‚Äîrun the comparison.</div>
               )}
 
               {latestSummary?.minutes_changes && latestSummary.minutes_changes.length ? (
@@ -393,7 +395,7 @@ export default function IepDiffPage() {
             <div className="mt-3 space-y-2 text-xs text-slate-500">
               <div className="flex items-center justify-between">
                 <span>Latest IEP</span>
-                <span>{summary?.latest_document_id ? summary.latest_document_id.slice(0, 8) : "ó"}</span>
+                <span>{summary?.latest_document_id ? summary.latest_document_id.slice(0, 8) : "‚Äî"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Previous IEP</span>
@@ -437,7 +439,7 @@ export default function IepDiffPage() {
                     <div className="font-semibold text-slate-700">{citation.doc_name || "Document"}</div>
                     <div className="text-slate-500">Page {citation.page ?? "?"}</div>
                     {citation.snippet ? (
-                      <p className="mt-1 text-[11px] text-slate-500">ì{citation.snippet}î</p>
+                      <p className="mt-1 text-[11px] text-slate-500">‚Äú{citation.snippet}‚Äù</p>
                     ) : null}
                   </li>
                 ))}
@@ -466,5 +468,13 @@ export default function IepDiffPage() {
         <EmptyState onRegenerate={() => regenerate(childId)} disabled={regenerating} />
       ) : null}
     </div>
+  );
+}
+
+export default function IepDiffPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto w-full max-w-6xl py-10 text-sm text-slate-500">Loading‚Ä¶</div>}>
+      <IepDiffPageInner />
+    </Suspense>
   );
 }

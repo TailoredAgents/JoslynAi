@@ -281,7 +281,7 @@ export default function ResearchSummariesPage() {
                             <span className="font-semibold text-brand-600">[{idx + 1}]</span>
                             <span className="font-medium text-slate-700"> {citation.doc_name || summary.document_name}</span>
                             {typeof citation.page === "number" ? <span className="text-slate-500"> (p.{citation.page})</span> : null}
-                            {citation.snippet ? <p className="mt-1 text-[11px] text-slate-500">"{citation.snippet}"</p> : null}
+                            {citation.snippet ? <p className="mt-1 text-[11px] text-slate-500">&quot;{citation.snippet}&quot;</p> : null}
                           </li>
                         ))}
                       </ul>

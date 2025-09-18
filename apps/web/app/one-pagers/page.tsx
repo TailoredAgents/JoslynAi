@@ -1,6 +1,7 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useBootstrappedChild } from "../../lib/use-child";
 
@@ -279,7 +280,7 @@ export default function OnePagersPage() {
       <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-heading text-slate-900">Step 1 — Choose audience</h2>
+            <h2 className="text-sm font-heading text-slate-900">Step 1 â€” Choose audience</h2>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {AUDIENCE_OPTIONS.map((option) => (
                 <button
@@ -319,7 +320,7 @@ export default function OnePagersPage() {
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-heading text-slate-900">Step 2 — Review content</h2>
+            <h2 className="text-sm font-heading text-slate-900">Step 2 â€” Review content</h2>
             {records.length ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-[220px,1fr]">
                 <aside className="space-y-2">
@@ -422,7 +423,7 @@ export default function OnePagersPage() {
 
           {selected ? (
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-heading text-slate-900">Step 3 — Publish & share</h2>
+              <h2 className="text-sm font-heading text-slate-900">Step 3 â€” Publish & share</h2>
               <p className="mt-2 text-xs text-slate-500">Generate a QR code and share link so staff can access this snapshot instantly.</p>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                 <button
@@ -447,7 +448,7 @@ export default function OnePagersPage() {
                   </button>
                   {shareInfo[selected.id].qr_base64 ? (
                     <div className="mt-3">
-                      <img src={shareInfo[selected.id].qr_base64} alt="One-pager QR code" className="h-32 w-32 rounded-lg border border-slate-200" />
+                      <Image src={shareInfo[selected.id].qr_base64} alt="One-pager QR code" width={128} height={128} className="h-32 w-32 rounded-lg border border-slate-200" />
                     </div>
                   ) : null}
                 </div>
@@ -462,7 +463,7 @@ export default function OnePagersPage() {
             <ul className="mt-3 space-y-2 text-xs text-slate-600">
               <li>Pick the audience closest to the staff member who needs the snapshot.</li>
               <li>Toggle Spanish to show bilingual content before copying.</li>
-              <li>Publish once you’re satisfied so the share link and QR code stay up to date.</li>
+              <li>Publish once youâ€™re satisfied so the share link and QR code stay up to date.</li>
             </ul>
           </div>
 

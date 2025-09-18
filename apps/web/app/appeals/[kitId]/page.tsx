@@ -275,7 +275,7 @@ export default function AppealKitDetailPage() {
                       <div className="font-semibold text-slate-700">{citation.doc_name || "Document"}</div>
                       <div className="text-slate-500">Page {citation.page ?? "?"}</div>
                       {citation.snippet ? (
-                        <p className="mt-1 text-[11px] text-slate-500">"{citation.snippet}"</p>
+                        <p className="mt-1 text-[11px] text-slate-500">&quot;{citation.snippet}&quot;</p>
                       ) : null}
                     </li>
                   ))}

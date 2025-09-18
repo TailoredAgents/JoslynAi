@@ -309,7 +309,7 @@ export default function SmartGoalsPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-heading text-slate-900">Tips</p>
             <ul className="mt-3 space-y-2 text-xs text-slate-600">
-              <li>Include the child's identifier if you manage multiple goal banks.</li>
+              <li>Include the child&apos;s identifier if you manage multiple goal banks.</li>
               <li>Add a document ID when you want citations back to the original IEP.</li>
               <li>Joslyn keeps the original goal safe-you can copy pieces or replace it entirely once confirmed.</li>
             </ul>

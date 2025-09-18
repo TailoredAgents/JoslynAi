@@ -22,7 +22,6 @@ export default function DocViewer({ pageText, citations }: { pageText: string; c
         root.appendChild(mark);
       }
     });
-  }, [pageText, JSON.stringify(citations)]);
+  }, [pageText, citations]);
   return <div ref={ref} className="border rounded p-2" />;
 }
-

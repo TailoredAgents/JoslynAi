@@ -1,5 +1,6 @@
-"use client";
+ï»¿"use client";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useBootstrappedChild } from "../../lib/use-child";
 
@@ -116,14 +117,14 @@ export default function AboutMyChildPage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-heading text-slate-900">Strengths & supports</h2>
-            <p className="mt-1 text-xs text-slate-500">Separate each item with a comma—we’ll format it beautifully for you.</p>
+            <p className="mt-1 text-xs text-slate-500">Separate each item with a comma-we&apos;ll format it beautifully for you.</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="space-y-1 text-sm text-slate-600">
-                Strengths (e.g., "pattern finder, empathetic friend")
+                Strengths (e.g., &quot;pattern finder, empathetic friend&quot;)
                 <input className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700" onChange={(e) => updateList("strengths", e.target.value)} />
               </label>
               <label className="space-y-1 text-sm text-slate-600">
-                Sensory supports (e.g., "noise-canceling headphones")
+                Sensory supports (e.g., &quot;noise-canceling headphones&quot;)
                 <input className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700" onChange={(e) => updateList("sensory_supports", e.target.value)} />
               </label>
               <label className="space-y-1 text-sm text-slate-600">
@@ -182,7 +183,7 @@ export default function AboutMyChildPage() {
                 {qr && (
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
                     <p className="text-xs text-slate-500">Scan to open</p>
-                    <img alt="QR code" src={qr} className="mx-auto mt-2 h-32 w-32" />
+                    <Image alt="QR code" src={qr} width={128} height={128} className="mx-auto mt-2 h-32 w-32" />
                   </div>
                 )}
               </>
@@ -194,9 +195,9 @@ export default function AboutMyChildPage() {
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">
             <p className="font-heading text-sm text-slate-700">Looking for inspiration?</p>
-            <p className="mt-3">• Highlight routines that bring joy
-              <br />• Mention what helps transitions
-              <br />• Celebrate the advocates on your team</p>
+            <p className="mt-3">â€¢ Highlight routines that bring joy
+              <br />â€¢ Mention what helps transitions
+              <br />â€¢ Celebrate the advocates on your team</p>
           </div>
         </aside>
       </section>
