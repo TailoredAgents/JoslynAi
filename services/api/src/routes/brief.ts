@@ -44,7 +44,7 @@ export default async function routes(fastify: FastifyInstance) {
       const seeds = ["services", "accommodations", "goals", "placement", "minutes"];
       const spansSets = await Promise.all(seeds.map(seed => retrieveForAsk(prisma as any, openai, childId, seed, 6)));
       const spans = Array.from(new Map((spansSets.flat() as any[]).map((s: any) => [s.id, s])).values()).slice(0, 18);
-      if (!spans.length) return reply.send({ overview: "I don’t see enough content in your document yet.", citations: [] });
+      if (!spans.length) return reply.send({ overview: "I don't see enough content in your document yet.", citations: [] });
 
       const blocks = spans.map((s: any, i: number) => `#${i+1} [${s.doc_name} p.${s.page}] ${s.text.slice(0, 700)}`).join("\n---\n");
       const resp = await safeResponsesCreate({
@@ -57,7 +57,15 @@ export default async function routes(fastify: FastifyInstance) {
       } as any);
 
       const text = (resp as any)?.output?.[0]?.content?.[0]?.text;
-      const data = text ? JSON.parse(text) : null;
+      let data: any = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          const log = (req as any).log;
+          log?.warn?.({ err, preview: String(text).slice(0, 200) }, "brief_json_parse_failed");
+        }
+      }
       if (!data) return reply.send({ overview: "Brief generation failed. Try again.", citations: [] });
       return reply.send(data);
     }

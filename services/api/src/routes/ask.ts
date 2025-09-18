@@ -99,20 +99,33 @@ export default async function routes(fastify: FastifyInstance) {
     } as any);
 
     const text = (resp as any)?.output?.[0]?.content?.[0]?.text;
-    const parsed = text ? JSON.parse(text) : null;
+    let parsed: any = null;
+    let parseErrorMessage: string | undefined;
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch (err) {
+        parseErrorMessage = err instanceof Error ? err.message : String(err);
+        const log = (req as any).log;
+        log?.warn?.({ err, preview: String(text).slice(0, 200) }, "ask_json_parse_failed");
+      }
+    }
     try {
       const u = (resp as any)?.usage || {};
       const model = (resp as any)?.model || (process.env.OPENAI_MODEL_MINI || "gpt-5-mini");
       const cost = computeCostCents({ model, input_tokens: u.input_tokens||0, output_tokens: u.output_tokens||0, cached_tokens: u.cached_tokens||0 }, MODEL_RATES);
-      await (prisma as any).agent_runs.create({ data: { org_id: (req as any).orgId || null, user_id: null, child_id: childId, intent: "ask", feature: "ask", route: "/children/:id/ask", inputs_json: { query }, outputs_json: parsed||{}, tokens: (u.input_tokens||0)+(u.output_tokens||0), cost_cents: cost } });
+      const outputsPayload = parsed ?? {
+        raw_text: text ?? null,
+        ...(parseErrorMessage ? { parse_error: parseErrorMessage } : {}),
+      };
+      await (prisma as any).agent_runs.create({ data: { org_id: (req as any).orgId || null, user_id: null, child_id: childId, intent: "ask", feature: "ask", route: "/children/:id/ask", inputs_json: { query }, outputs_json: outputsPayload, tokens: (u.input_tokens||0)+(u.output_tokens||0), cost_cents: cost } });
     } catch {}
-    if (!parsed) return reply.send({ answer: "I don’t see that in your documents yet.", citations: [] });
+    if (!parsed) {
+      return reply.send({ answer: withDisclaimer("I couldn't turn that into an answer just yet. Please try again."), citations: [] });
+    }
 
     const cit = (parsed.citations || []).slice(0, 5);
     return reply.send({ answer: withDisclaimer(parsed.answer), citations: cit });
   });
 }
-
-
-
 

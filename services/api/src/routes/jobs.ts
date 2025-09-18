@@ -19,9 +19,32 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.patch<{ Params: { id: string } }>("/jobs/:id", async (req, reply) => {
-    const { status, error_text, payload } = (req.body as any);
-    const row = await (prisma as any).job_runs.update({ where: { id: (req.params as any).id }, data: { status, error_text: error_text || null, payload_json: payload || undefined } });
-    return reply.send({ ok: true, job: row });
+    const { status, error_text, payload, type } = (req.body as any);
+    const updates: Record<string, any> = {};
+    if (typeof status === "string" && status.trim()) {
+      updates.status = status.trim();
+    }
+    if (typeof type === "string" && type.trim()) {
+      updates.type = type.trim();
+    }
+    if (error_text !== undefined) {
+      updates.error_text = error_text ?? null;
+    }
+    if (payload !== undefined) {
+      updates.payload_json = payload;
+    }
+    if (!Object.keys(updates).length) {
+      return reply.status(400).send({ error: "no_update_fields" });
+    }
+    try {
+      const row = await (prisma as any).job_runs.update({ where: { id: (req.params as any).id }, data: updates });
+      return reply.send({ ok: true, job: row });
+    } catch (err: any) {
+      if (err?.code === "P2025") {
+        return reply.status(404).send({ error: "not_found" });
+      }
+      throw err;
+    }
   });
 
   app.get("/jobs", async (req, reply) => {
@@ -45,9 +68,4 @@ export default async function routes(app: FastifyInstance) {
     return reply.send(row);
   });
 }
-
-
-
-
-
 

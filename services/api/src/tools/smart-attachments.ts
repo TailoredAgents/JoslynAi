@@ -13,9 +13,22 @@ export default async function routes(app: FastifyInstance) {
     const rules = (SMART_ATTACHMENT_MAP as any)[denial_reason] || [];
     if (!rules.length) return reply.send({ suggestions: [] });
 
-    const tags = Array.from(new Set(rules.flatMap((r: any) => r.tags)));
+    const tags = Array.from(new Set(rules.flatMap((r: any) => r.tags))) as string[];
+    if (!tags.length) {
+      return reply.send({ suggestions: [] });
+    }
+
+    const tagFilters = tags.map((tag: string) => ({ doc_tags: { array_contains: tag } }));
+    const docWhere: any = { org_id: orgId };
+    if (child_id) {
+      docWhere.child_id = child_id;
+    }
+    if (tagFilters.length) {
+      docWhere.OR = tagFilters;
+    }
+
     const docs = await (prisma as any).documents.findMany({
-      where: { child_id, org_id: orgId, doc_tags: { hasSome: tags } },
+      where: docWhere,
       orderBy: { created_at: "desc" },
       take: 20,
     });
