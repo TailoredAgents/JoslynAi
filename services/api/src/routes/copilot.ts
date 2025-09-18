@@ -45,8 +45,14 @@ function detectIntent(query: string): { intent: string; tags: string[]; actions:
   if (/appeal kit/.test(normalized) || (/appeal/.test(normalized) && /kit/.test(normalized))) {
     return { intent: "appeal.kit", tags: [], actions: [{ type: "open_tab", label: "Open appeal kits", href: "/appeals" }] };
   }
+  if (/mediation|complaint|state complaint|due process/.test(normalized)) {
+    return { intent: "advocacy.outline", tags: ["iep", "eval_report"], actions: [{ type: "open_tab", label: "Open advocacy outline", href: "/advocacy/outlines" }] };
+  }
   if (/smart/.test(normalized) && /goal/.test(normalized)) {
     return { intent: "goals.smart", tags: ["iep"], actions: [{ type: "open_tab", label: "Score SMART goal", href: "/letters/goals" }] };
+  }
+  if ((/summary|explain/.test(normalized)) && (/report|evaluation/.test(normalized))) {
+    return { intent: "research.explain", tags: [], actions: [{ type: "open_tab", label: "Open research summaries", href: "/research" }] };
   }
   return { intent: "general.ask", tags: [], actions: [] };
 }
@@ -85,6 +91,177 @@ export default async function routes(app: FastifyInstance) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const intentInfo = detectIntent(query);
 
+
+    if (intentInfo.intent === "recommendations.supports") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      const sourceKind = "auto";
+      const record = await (prisma as any).recommendations.findFirst({
+        where: { child_id: childId, source_kind: sourceKind },
+        orderBy: { updated_at: "desc" },
+      });
+
+      async function queueRecommendations(documentId?: string | null) {
+        if (!documentId) {
+          const evalDoc = await (prisma as any).documents.findFirst({
+            where: { child_id: childId, type: "eval_report" },
+            orderBy: { created_at: "desc" },
+          });
+          if (evalDoc?.id) {
+            documentId = evalDoc.id;
+          } else {
+            const iepDoc = await (prisma as any).documents.findFirst({
+              where: { child_id: childId, type: "iep" },
+              orderBy: [{ version: "desc" }, { created_at: "desc" }],
+            });
+            if (iepDoc?.id) {
+              documentId = iepDoc.id;
+            }
+          }
+        }
+
+        if (documentId) {
+          await enqueue({ kind: "prep_recommendations", child_id: childId, org_id: orgId, document_id: documentId, source: sourceKind });
+          await (prisma as any).recommendations.upsert({
+            where: { child_id_source_kind: { child_id: childId, source_kind: sourceKind } } as any,
+            update: { status: "pending" },
+            create: {
+              child_id: childId,
+              org_id: orgId,
+              source_kind: sourceKind,
+              recommendations_json: [],
+              citations_json: [],
+              request_hash: null,
+              locale: "en",
+              status: "pending",
+            },
+          });
+          return true;
+        }
+        return false;
+      }
+
+      if (!record) {
+        const queued = await queueRecommendations(null);
+        if (queued) {
+          return reply.send({
+            intent: intentInfo.intent,
+            answer: withDisclaimer("Let me review the latest reports to suggest supports. Give me a minute and open the recommendations tab."),
+            citations: [],
+            actions,
+            follow_ups: ["Refresh recommendations"],
+            summary: null,
+            artifacts: [],
+          });
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("Upload an IEP or evaluation so I can suggest accommodations with citations."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload a document"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (record.status === "pending") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I'm drafting those recommendations. Refresh the recommendations tab in a moment."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh recommendations"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (record.status === "error") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I hit a snag generating recommendations. Try regenerating from the recommendations tab."),
+          citations: [],
+          actions,
+          follow_ups: ["Regenerate recommendations"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (record.status === "empty") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I didn't see enough evidence to recommend new supports yet. Highlight the areas you want me to use and try again."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload more documents"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const recPayload = Array.isArray(record.recommendations_json) ? record.recommendations_json : [];
+      const citationsRaw = Array.isArray(record.citations_json) ? record.citations_json : [];
+      const citations = citationsRaw.map((entry: any, idx: number) => ({
+        index: idx + 1,
+        document_id: entry.document_id,
+        doc_name: entry.doc_name,
+        page: entry.page,
+        snippet: entry.snippet,
+        span_id: entry.span_id,
+      }));
+      const spanIndex = new Map<string, number>();
+      citationsRaw.forEach((entry: any, idx: number) => {
+        if (entry?.span_id) {
+          spanIndex.set(String(entry.span_id), idx + 1);
+        }
+      });
+
+      const lines: string[] = [];
+      recPayload.slice(0, 3).forEach((rec: any, idx: number) => {
+        const title = (rec?.title && String(rec.title).trim()) || `Recommendation ${idx + 1}`;
+        const recommendation = rec?.recommendation || rec?.support || "";
+        const rationale = rec?.rationale || "";
+        const indices = Array.isArray(rec?.citations)
+          ? rec.citations
+              .map((spanId: any) => spanIndex.get(String(spanId)) as number | undefined)
+              .filter((num: number | undefined): num is number => typeof num === "number")
+          : [];
+        const citationNote = indices.length ? ` ${indices.map((n: number) => `[${n}]`).join("")}` : "";
+        if (recommendation) {
+          lines.push(`${title}: ${recommendation}${citationNote}`);
+        }
+        if (rationale) {
+          lines.push(`Why: ${rationale}`);
+        }
+      });
+
+      if (!lines.length) {
+        lines.push("I didn't find a support I could back with citations yet.");
+      } else {
+        lines.push("Open the recommendations tab for bilingual drafts you can copy into letters.");
+      }
+
+      const followUps = ["Insert into letter", "Show Spanish versions"];
+      const artifacts = [{ kind: "recommendations", source: record.source_kind, child_id: childId }];
+      const answerText = lines.join("\n\n");
+      const sanitizedCitations = citations.map(({ span_id, ...rest }: any) => rest);
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(answerText),
+        citations: sanitizedCitations,
+        actions,
+        follow_ups: followUps,
+        summary: null,
+        artifacts,
+      });
+    }
 
     if (intentInfo.intent === "denial.translate") {
       const actions = intentInfo.actions.map((action) => {
@@ -352,6 +529,341 @@ if (intentInfo.intent === "goals.smart") {
     artifacts: [{ kind: "goal_rewrite", id: latestRewrite.id }],
   });
 }
+
+
+    if (intentInfo.intent === "advocacy.outline") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      async function queueOutline(documentId?: string | null) {
+        let targetDocument = documentId || null;
+        if (!targetDocument) {
+          const evalDoc = await (prisma as any).documents.findFirst({
+            where: { child_id: childId, type: "eval_report" },
+            orderBy: [{ created_at: "desc" }],
+            select: { id: true },
+          });
+          if (evalDoc?.id) {
+            targetDocument = evalDoc.id;
+          } else {
+            const iepDoc = await (prisma as any).documents.findFirst({
+              where: { child_id: childId, type: "iep" },
+              orderBy: [{ version: "desc" }, { created_at: "desc" }],
+              select: { id: true },
+            });
+            if (iepDoc?.id) {
+              targetDocument = iepDoc.id;
+            } else {
+              const anyDoc = await (prisma as any).documents.findFirst({
+                where: { child_id: childId },
+                orderBy: [{ created_at: "desc" }],
+                select: { id: true },
+              });
+              targetDocument = anyDoc?.id || null;
+            }
+          }
+        }
+        if (!targetDocument) return null;
+        const created = await (prisma as any).advocacy_outlines.create({
+          data: {
+            child_id: childId,
+            org_id: orgId,
+            outline_kind: "mediation",
+            outline_json: {
+              document_id: targetDocument,
+              outline_kind: "mediation",
+              summary: "",
+              facts: [],
+              attempts: [],
+              remedies: [],
+              next_steps: [],
+              closing: "",
+            },
+            citations_json: [],
+            status: "pending",
+          },
+        });
+        await enqueue({
+          kind: "build_advocacy_outline",
+          outline_id: created.id,
+          child_id: childId,
+          org_id: orgId,
+          document_id: targetDocument,
+          outline_kind: "mediation",
+        });
+        return created;
+      }
+
+      const outline = await (prisma as any).advocacy_outlines.findFirst({
+        where: { child_id: childId },
+        orderBy: { updated_at: "desc" },
+      });
+
+      if (!outline) {
+        const created = await queueOutline(null);
+        if (created) {
+          return reply.send({
+            intent: intentInfo.intent,
+            answer: withDisclaimer("I'm drafting an outline now. Give me a minute and open the advocacy tab for the full breakdown."),
+            citations: [],
+            actions,
+            follow_ups: ["Refresh advocacy outline"],
+            summary: null,
+            artifacts: [],
+          });
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("Upload an evaluation or IEP so I can draft a mediation or complaint outline."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload supporting documents"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (outline.status === "pending") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I'm still organizing that outline. Refresh the advocacy tab in a moment."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh advocacy outline"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (outline.status === "error") {
+        const docId = outline.outline_json?.document_id || null;
+        await queueOutline(docId);
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I hit a snag drafting that outline. I queued it again—check the advocacy tab shortly."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh advocacy outline"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const outlineJson = outline.outline_json || {};
+      const facts = Array.isArray(outlineJson.facts) ? outlineJson.facts : [];
+      const attempts = Array.isArray(outlineJson.attempts) ? outlineJson.attempts : [];
+      const remedies = Array.isArray(outlineJson.remedies) ? outlineJson.remedies : [];
+      const nextSteps = Array.isArray(outlineJson.next_steps) ? outlineJson.next_steps : [];
+      const citationsRaw = Array.isArray(outline.citations_json) ? outline.citations_json : [];
+      const citations = citationsRaw.map((entry: any, idx: number) => ({
+        index: idx + 1,
+        document_id: entry.document_id,
+        doc_name: entry.doc_name,
+        page: entry.page,
+        snippet: entry.snippet,
+      }));
+
+      const citationLookup = new Map<string, number>();
+      citationsRaw.forEach((entry: any, idx: number) => {
+        if (entry?.span_id) {
+          citationLookup.set(String(entry.span_id), idx + 1);
+        }
+      });
+
+      const lines: string[] = [];
+      if (outlineJson.summary) {
+        lines.push(outlineJson.summary);
+      }
+      facts.slice(0, 2).forEach((item: any, idx: number) => {
+        const label = citationLookup.get(String((item?.citations || [])[0]));
+        const badge = label ? ` [${label}]` : "";
+        lines.push(`Fact ${idx + 1}: ${item.detail || ""}${badge}`);
+      });
+      remedies.slice(0, 2).forEach((item: any, idx: number) => {
+        const label = citationLookup.get(String((item?.citations || [])[0]));
+        const badge = label ? ` [${label}]` : "";
+        lines.push(`Remedy ${idx + 1}: ${item.remedy || ""}${badge}`);
+      });
+      if (!lines.length) {
+        lines.push("I drafted the outline, but I did not find a solid evidence-backed entry yet.");
+      } else {
+        lines.push("Open the advocacy tab to review the full outline, edit language, and export a letter.");
+      }
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(lines.join("\n\n")),
+        citations,
+        actions,
+        follow_ups: ["Draft mediation letter", "Explain requested remedies"],
+        summary: outlineJson.summary || null,
+        artifacts: [{ kind: "advocacy_outline", outline_id: outline.id }],
+      });
+    }
+
+    if (intentInfo.intent === "research.explain") {
+      const actions = intentInfo.actions.map((action) => {
+        if (!action.href || !childId) return action;
+        const sep = action.href.includes("?") ? "&" : "?";
+        return { ...action, href: `${action.href}${sep}child=${childId}` };
+      });
+
+      async function queueResearch(documentId?: string | null) {
+        let targetId = documentId;
+        if (!targetId) {
+          const latestEval = await (prisma as any).documents.findFirst({
+            where: { child_id: childId, type: "eval_report" },
+            orderBy: [{ created_at: "desc" }],
+            select: { id: true, org_id: true },
+          });
+          if (latestEval?.id) {
+            targetId = latestEval.id;
+          } else {
+            const latestDoc = await (prisma as any).documents.findFirst({
+              where: { child_id: childId },
+              orderBy: [{ created_at: "desc" }],
+              select: { id: true, org_id: true },
+            });
+            if (latestDoc?.id) {
+              targetId = latestDoc.id;
+            }
+          }
+        }
+
+        if (!targetId) return false;
+        const docInfo = await (prisma as any).documents.findUnique({
+          where: { id: targetId },
+          select: { id: true, child_id: true, org_id: true },
+        });
+        if (!docInfo) return false;
+
+        await enqueue({
+          kind: "research_summary",
+          document_id: docInfo.id,
+          child_id: docInfo.child_id,
+          org_id: docInfo.org_id || orgId,
+        });
+
+        await (prisma as any).research_summaries.upsert({
+          where: { document_id: docInfo.id },
+          update: { status: "pending" },
+          create: {
+            document_id: docInfo.id,
+            org_id: docInfo.org_id || orgId,
+            summary_json: {},
+            glossary_json: [],
+            citations_json: [],
+            reading_level: null,
+            status: "pending",
+          },
+        });
+        return true;
+      }
+
+      const rows = await (prisma as any).$queryRawUnsafe(
+        `SELECT rs.*, d.original_name AS doc_name, d.type AS doc_type
+           FROM research_summaries rs
+           JOIN documents d ON d.id = rs.document_id
+          WHERE d.child_id = $1
+          ORDER BY rs.updated_at DESC
+          LIMIT 1`,
+        childId
+      );
+      const latestSummary = rows?.[0];
+
+      if (!latestSummary) {
+        const queued = await queueResearch(null);
+        if (queued) {
+          return reply.send({
+            intent: intentInfo.intent,
+            answer: withDisclaimer("I'm reviewing that report now. Give me a minute and open the research tab for the full explainer."),
+            citations: [],
+            actions,
+            follow_ups: ["Refresh research summary"],
+            summary: null,
+            artifacts: [],
+          });
+        }
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("Upload an evaluation or report and I can summarize it in plain language."),
+          citations: [],
+          actions,
+          follow_ups: ["Upload a report"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (latestSummary.status === "pending") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I'm still summarizing that report. Give me another minute and refresh the research tab."),
+          citations: [],
+          actions,
+          follow_ups: ["Refresh research summary"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      if (latestSummary.status === "error") {
+        return reply.send({
+          intent: intentInfo.intent,
+          answer: withDisclaimer("I hit a snag summarizing that report. Try requesting it again from the research tab."),
+          citations: [],
+          actions,
+          follow_ups: ["Regenerate summary"],
+          summary: null,
+          artifacts: [],
+        });
+      }
+
+      const summaryJson = latestSummary.summary_json || {};
+      const glossary = Array.isArray(latestSummary.glossary_json) ? latestSummary.glossary_json : [];
+      const citationsRaw = Array.isArray(latestSummary.citations_json) ? latestSummary.citations_json : [];
+      const citations = citationsRaw.map((entry: any, idx: number) => ({
+        index: idx + 1,
+        document_id: entry.document_id,
+        doc_name: entry.doc_name || latestSummary.doc_name,
+        page: entry.page,
+        snippet: entry.snippet,
+      }));
+
+      const lines: string[] = [];
+      if (summaryJson.summary) {
+        lines.push(summaryJson.summary);
+      }
+      if (summaryJson.teacher_voice) {
+        lines.push(`Teacher version: ${summaryJson.teacher_voice}`);
+      }
+      if (summaryJson.caregiver_voice) {
+        lines.push(`Caregiver version: ${summaryJson.caregiver_voice}`);
+      }
+      if (latestSummary.reading_level) {
+        lines.push(`Reading level: ${latestSummary.reading_level}`);
+      }
+      if (glossary.length) {
+        const terms = glossary.slice(0, 3)
+          .map((item: any) => `${item.term}: ${item.definition}`)
+          .join("\n- ");
+        lines.push(`Glossary:\n- ${terms}`);
+      }
+      lines.push("Open the research tab for the full digest, glossary, and bilingual copies.");
+
+      return reply.send({
+        intent: intentInfo.intent,
+        answer: withDisclaimer(lines.join("\n\n")),
+
+        actions,
+        follow_ups: ["Draft a plain-language note", "Share this summary"],
+        summary: summaryJson.summary || null,
+        artifacts: [{ kind: "research_summary", document_id: latestSummary.document_id }],
+      });
+    }
 
     if (intentInfo.intent === "appeal.kit") {
       const actions = intentInfo.actions.map((action) => {
@@ -700,6 +1212,3 @@ ${excerptBlocks}`
     });
   });
 }
-
-
-

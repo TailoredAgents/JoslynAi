@@ -1,4 +1,4 @@
-import os, json, threading, datetime
+import os, json, threading, datetime, hashlib
 import redis
 from src.ocr import process_pdf
 from src.index import embed_and_store
@@ -302,6 +302,205 @@ DENIAL_TRANSLATE_SCHEMA = {
         "additionalProperties": False
     }
 }
+
+
+RESEARCH_SUMMARY_SCHEMA = {
+    "name": "ResearchSummary",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "teacher_voice": {"type": "string", "default": ""},
+            "caregiver_voice": {"type": "string", "default": ""},
+            "reading_level": {"type": ["string", "null"], "default": None},
+            "glossary": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "term": {"type": "string"},
+                        "definition": {"type": "string"}
+                    },
+                    "required": ["term", "definition"]
+                },
+                "default": []
+            },
+            "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+        },
+        "required": ["summary"],
+        "additionalProperties": False
+    }
+}
+
+RECOMMENDATIONS_SCHEMA = {
+    "name": "AccommodationRecommendations",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "recommendations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "default": ""},
+                        "title": {"type": "string", "default": ""},
+                        "support": {"type": "string"},
+                        "rationale": {"type": "string"},
+                        "support_es": {"type": "string", "default": ""},
+                        "rationale_es": {"type": "string", "default": ""},
+                        "citations": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "default": []
+                        }
+                    },
+                    "required": ["support", "rationale"],
+                    "additionalProperties": False
+                },
+                "default": []
+            }
+        },
+        "required": ["recommendations"],
+        "additionalProperties": False
+    }
+}
+
+RECOMMENDATIONS_SYSTEM_PROMPT = (
+    "You are Joslyn, a special education advocate preparing service and accommodation recommendations for a family. "
+    "Review the labeled excerpts and suggest concrete supports that are backed by the evidence provided. "
+    "Each recommendation must include a brief plain-language summary, a rationale that references student need, "
+    "and cite the supporting excerpts using the provided labels. "
+    "Provide Spanish translations so caregivers can share them bilingually. "
+    "If there is not enough evidence to justify a recommendation, return an empty list."
+)
+
+ADVOCACY_OUTLINE_SCHEMA = {
+    "name": "AdvocacyOutline",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string", "default": ""},
+            "facts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "detail": {"type": "string"},
+                        "impact": {"type": ["string", "null"], "default": None},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["detail"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "attempts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "attempt": {"type": "string"},
+                        "outcome": {"type": ["string", "null"], "default": None},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["attempt"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "remedies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "remedy": {"type": "string"},
+                        "rationale": {"type": ["string", "null"], "default": None},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["remedy"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "next_steps": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "step": {"type": "string"},
+                        "timeline": {"type": ["string", "null"], "default": None},
+                        "citations": {"type": "array", "items": {"type": "string"}, "default": []}
+                    },
+                    "required": ["step"],
+                    "additionalProperties": False
+                },
+                "default": []
+            },
+            "closing": {"type": "string", "default": ""}
+        },
+        "required": ["facts", "remedies"],
+        "additionalProperties": False
+    }
+}
+
+ADVOCACY_OUTLINE_SYSTEM_PROMPT = (
+    "You are Joslyn, a special education advocate drafting a mediation or complaint outline for a caregiver. "
+    "Use plain, empowering language, keep entries concise, and rely only on the provided excerpts. "
+    "Organize the response into background facts, previous attempts to resolve the issue, requested remedies, and suggested next steps. "
+    "Include citations by referencing the excerpt labels (e.g., [O001]) that justify each entry."
+)
+
+
+def _select_research_segments(conn, document_id: str, doc_name: str, limit: int = 60):
+    rows = conn.execute("SELECT id, page, text FROM doc_spans WHERE document_id=%s ORDER BY page ASC LIMIT %s", (document_id, limit * 3)).fetchall()
+    scored = []
+    for row in rows:
+        span_id, page, text = row
+        text = (text or "").strip()
+        if len(text) < 80:
+            continue
+        lower = text.lower()
+        score = 1
+        if "summary" in lower or "conclusion" in lower:
+            score += 3
+        if "recommend" in lower or "score" in lower or "percentile" in lower:
+            score += 2
+        if "strength" in lower or "need" in lower:
+            score += 1
+        scored.append((score, str(span_id), page, text))
+    scored.sort(key=lambda item: (-item[0], item[2], item[1]))
+    segments = []
+    used = set()
+    for score, span_id, page, text in scored:
+        if span_id in used:
+            continue
+        label = f"R{len(segments) + 1:03d}"
+        segments.append({
+            "label": label,
+            "span_id": span_id,
+            "document_id": document_id,
+            "doc_name": doc_name,
+            "page": page,
+            "text": text[:600],
+            "which": "research"
+        })
+        used.add(span_id)
+        if len(segments) >= limit:
+            break
+    return segments
+
+
+def _resolve_labels(collection, label_map):
+    for item in collection or []:
+        resolved = []
+        for label in item.get("citations") or []:
+            seg = label_map.get(str(label).strip())
+            if seg:
+                resolved.append(seg["span_id"])
+        item["citations"] = resolved
 
 DENIAL_TRANSLATE_SYSTEM_PROMPT = (
     "You are Joslyn, a special education and insurance advocate helping caregivers understand denial letters. "
@@ -774,6 +973,200 @@ elif kind == "denial_explain":
                 print("[WORKER] unable to mark denial explanation error:", inner)
 
 
+
+            elif kind == "research_summary":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                document_id = task.get("document_id")
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                if not document_id:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        doc = conn.execute(
+                            "SELECT original_name, type FROM documents WHERE id=%s",
+                            (document_id,)
+                        ).fetchone()
+                        doc_name = None
+                        if doc:
+                            doc_name = doc[0] or doc[1]
+                        doc_name = doc_name or "Report"
+                        segments = _select_research_segments(conn, document_id, doc_name, limit=60)
+                        prompt_parts = [
+                            "Summarize this report for families:",
+                        ]
+                        if segments:
+                            prompt_parts.append("Excerpts (cite labels):")
+                            for seg in segments:
+                                prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
+                        prompt = "
+".join(prompt_parts)
+
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": RESEARCH_SUMMARY_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": RESEARCH_SUMMARY_SCHEMA}
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty research summary response")
+                        data = json.loads(raw)
+                        summary = {
+                            "summary": data.get("summary") or "",
+                            "teacher_voice": data.get("teacher_voice") or "",
+                            "caregiver_voice": data.get("caregiver_voice") or "",
+                            "glossary": data.get("glossary") or [],
+                            "citations": data.get("citations") or []
+                        }
+                        reading_level = data.get("reading_level")
+                        label_map = {seg["label"]: seg for seg in segments}
+                        _resolve_labels([summary], label_map)
+                        citations_json = _build_citation_entries(label_map, set(summary.get("citations") or []))
+
+                        conn.execute(
+                            """
+                            INSERT INTO research_summaries (org_id, document_id, summary_json, glossary_json, citations_json, reading_level, status)
+                            VALUES (%s, %s, %s, %s, %s, %s, 'ready')
+                            ON CONFLICT (document_id) DO UPDATE
+                              SET summary_json = EXCLUDED.summary_json,
+                                  glossary_json = EXCLUDED.glossary_json,
+                                  citations_json = EXCLUDED.citations_json,
+                                  reading_level = EXCLUDED.reading_level,
+                                  status = 'ready',
+                                  updated_at = NOW()
+                            """,
+                            (org_id, document_id, Json({
+                                "summary": summary["summary"],
+                                "teacher_voice": summary["teacher_voice"],
+                                "caregiver_voice": summary["caregiver_voice"]
+                            }), Json(summary.get("glossary") or []), Json(citations_json), reading_level)
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] research_summary failed:", e)
+            elif kind == "build_advocacy_outline":
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url:
+                    continue
+                outline_id = task.get("outline_id")
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                document_id = task.get("document_id")
+                outline_kind = task.get("outline_kind") or "mediation"
+                if not outline_id or not child_id:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        row = conn.execute(
+                            "SELECT outline_json FROM advocacy_outlines WHERE id=%s",
+                            (outline_id,)
+                        ).fetchone()
+                        if not row:
+                            continue
+                        existing_outline = row[0] or {}
+                        source_document_id = document_id or existing_outline.get("document_id")
+                        doc_name = existing_outline.get("document_name") or "Document"
+                        if source_document_id:
+                            doc_info = conn.execute(
+                                "SELECT original_name, type FROM documents WHERE id=%s",
+                                (source_document_id,)
+                            ).fetchone()
+                            if doc_info:
+                                doc_name = doc_info[0] or doc_info[1] or doc_name
+                        segments = []
+                        if source_document_id:
+                            segments = _select_segments(conn, source_document_id, "O", doc_name, limit=60)
+                        if not segments:
+                            payload = {
+                                "document_id": source_document_id,
+                                "outline_kind": outline_kind,
+                                "summary": "",
+                                "facts": [],
+                                "attempts": [],
+                                "remedies": [],
+                                "next_steps": [],
+                                "closing": ""
+                            }
+                            conn.execute(
+                                "UPDATE advocacy_outlines SET outline_json=%s, citations_json=%s, status='empty', updated_at=NOW() WHERE id=%s",
+                                (Json(payload), Json([]), outline_id)
+                            )
+                            conn.commit()
+                            continue
+                        label_map = {seg["label"]: seg for seg in segments}
+                        prompt_parts = [
+                            "Draft a mediation or complaint outline for a caregiver.",
+                            f"Outline kind: {outline_kind}.",
+                            "Organize the outline into background facts, previous attempts, requested remedies, and next steps.",
+                            "Use only the provided excerpts and cite them with their labels (e.g., [O001]).",
+                            "Return JSON that matches the schema."
+                        ]
+                        prompt_parts.append("Excerpts:")
+                        for seg in segments:
+                            prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
+                        prompt = "\n".join(prompt_parts)
+
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": ADVOCACY_OUTLINE_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": ADVOCACY_OUTLINE_SCHEMA}
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty advocacy outline response")
+                        data = json.loads(raw)
+                        facts = data.get("facts") or []
+                        attempts = data.get("attempts") or []
+                        remedies = data.get("remedies") or []
+                        next_steps = data.get("next_steps") or []
+                        for collection in (facts, attempts, remedies, next_steps):
+                            _resolve_labels(collection, label_map)
+                        used_ids = set()
+                        for collection in (facts, attempts, remedies, next_steps):
+                            for item in collection:
+                                for span_id in item.get("citations") or []:
+                                    used_ids.add(span_id)
+                        outline_payload = {
+                            "document_id": source_document_id,
+                            "outline_kind": outline_kind,
+                            "summary": data.get("summary") or "",
+                            "facts": facts,
+                            "attempts": attempts,
+                            "remedies": remedies,
+                            "next_steps": next_steps,
+                            "closing": data.get("closing") or ""
+                        }
+                        citations_json = _build_citation_entries(label_map, used_ids)
+                        status_value = "ready" if (facts or remedies) else "empty"
+                        conn.execute(
+                            "UPDATE advocacy_outlines SET outline_json=%s, citations_json=%s, status=%s, updated_at=NOW() WHERE id=%s",
+                            (Json(outline_payload), Json(citations_json), status_value, outline_id)
+                        )
+                        conn.commit()
+                except Exception as e:
+                    print("[WORKER] build_advocacy_outline failed:", e)
+                    try:
+                        if db_url:
+                            with psycopg.connect(db_url) as conn2:
+                                _set_org_context(conn2, org_id)
+                                conn2.execute("UPDATE advocacy_outlines SET status='error', updated_at=NOW() WHERE id=%s", (outline_id,))
+                                conn2.commit()
+                    except Exception as inner:
+                        print("[WORKER] build_advocacy_outline error mark failed:", inner)
             elif kind == "goal_smart":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:
@@ -974,30 +1367,131 @@ elif kind == "denial_explain":
                 db_url = os.getenv("DATABASE_URL")
                 if not db_url:
                     continue
+                child_id = task.get("child_id")
+                org_id = task.get("org_id")
+                document_id = task.get("document_id")
+                source_kind = (task.get("source") or "auto").lower()
+                if not child_id:
+                    continue
+                request_hash = hashlib.sha1(f"{child_id}:{source_kind}:{document_id or ''}".encode("utf-8")).hexdigest()
                 try:
                     with psycopg.connect(db_url) as conn:
-                        _set_org_context(conn, task.get("org_id"))
+                        _set_org_context(conn, org_id)
                         conn.execute(
                             """
-                            INSERT INTO recommendations (org_id, child_id, source_kind, recommendations_json, citations_json, status)
-                            VALUES (%s, %s, %s, %s, %s, 'stale')
+                            INSERT INTO recommendations (org_id, child_id, source_kind, recommendations_json, citations_json, request_hash, locale, status)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
                             ON CONFLICT (child_id, source_kind) DO UPDATE
-                              SET status = 'stale',
-                                  recommendations_json = EXCLUDED.recommendations_json,
-                                  citations_json = EXCLUDED.citations_json,
+                              SET status = 'pending',
+                                  request_hash = EXCLUDED.request_hash,
+                                  locale = EXCLUDED.locale,
                                   updated_at = NOW()
                             """,
                             (
-                                task.get("org_id"),
-                                task.get("child_id"),
-                                task.get("source") or "auto",
-                                [],
-                                []
+                                org_id,
+                                child_id,
+                                source_kind,
+                                Json([]),
+                                Json([]),
+                                request_hash,
+                                "en"
                             )
+                        )
+                        conn.commit()
+                except Exception as mark_err:
+                    print("[WORKER] prep_recommendations pending mark failed:", mark_err)
+                if not document_id:
+                    continue
+                try:
+                    with psycopg.connect(db_url) as conn:
+                        _set_org_context(conn, org_id)
+                        doc_row = conn.execute(
+                            "SELECT original_name, type FROM documents WHERE id=%s",
+                            (document_id,)
+                        ).fetchone()
+                        doc_name = None
+                        if doc_row:
+                            doc_name = doc_row[0] or doc_row[1]
+                        doc_name = doc_name or "Document"
+                        segments = _select_segments(conn, document_id, "R", doc_name, limit=60)
+                        if not segments:
+                            conn.execute(
+                                "UPDATE recommendations SET recommendations_json=%s, citations_json=%s, locale=%s, status='empty', updated_at=NOW() WHERE child_id=%s AND source_kind=%s",
+                                (Json([]), Json([]), "en", child_id, source_kind)
+                            )
+                            conn.commit()
+                            continue
+                        label_map = {seg["label"]: seg for seg in segments}
+                        prompt_parts = [
+                            "Produce 3-5 specific accommodations or services that match the student's needs.",
+                            "Use only the provided excerpts and cite each recommendation using the excerpt labels (e.g., [R001]).",
+                            "Return bilingual output so families can share in English and Spanish."
+                        ]
+                        prompt_parts.append("Excerpts:")
+                        for seg in segments:
+                            prompt_parts.append(f"[{seg['label']}] (page {seg['page']}) {seg['text']}")
+                        prompt = "
+".join(prompt_parts)
+                        client = _openai()
+                        model = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
+                        response = client.responses.create(
+                            model=model,
+                            input=[
+                                {"role": "system", "content": RECOMMENDATIONS_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_schema", "json_schema": RECOMMENDATIONS_SCHEMA}
+                        )
+                        raw = response.output[0].content[0].text if response.output and response.output[0].content else None
+                        if not raw:
+                            raise ValueError("empty recommendations response")
+                        data = json.loads(raw)
+                        raw_items = data.get("recommendations") or []
+                        _resolve_labels(raw_items, label_map)
+                        used_ids = set()
+                        items = []
+                        for idx, rec in enumerate(raw_items):
+                            citations = [str(span_id) for span_id in (rec.get("citations") or [])]
+                            for span_id in citations:
+                                used_ids.add(span_id)
+                            items.append({
+                                "id": rec.get("id") or f"{source_kind}-{idx + 1}",
+                                "title": rec.get("title") or "",
+                                "recommendation": rec.get("support") or rec.get("recommendation") or "",
+                                "rationale": rec.get("rationale") or "",
+                                "translation": {
+                                    "recommendation": rec.get("support_es") or "",
+                                    "rationale": rec.get("rationale_es") or ""
+                                },
+                                "citations": citations
+                            })
+                        citations_json = _build_citation_entries(label_map, used_ids)
+                        status_value = "ready" if items else "empty"
+                        conn.execute(
+                            """
+                            UPDATE recommendations
+                               SET recommendations_json=%s,
+                                   citations_json=%s,
+                                   locale=%s,
+                                   status=%s,
+                                   updated_at=NOW()
+                             WHERE child_id=%s AND source_kind=%s
+                            """,
+                            (Json(items), Json(citations_json), "en", status_value, child_id, source_kind)
                         )
                         conn.commit()
                 except Exception as e:
                     print("[WORKER] prep_recommendations failed:", e)
+                    try:
+                        with psycopg.connect(db_url) as conn:
+                            _set_org_context(conn, org_id)
+                            conn.execute(
+                                "UPDATE recommendations SET status='error', updated_at=NOW() WHERE child_id=%s AND source_kind=%s",
+                                (child_id, source_kind)
+                            )
+                            conn.commit()
+                    except Exception as inner:
+                        print("[WORKER] prep_recommendations error mark failed:", inner)
             else:
                 print("Unknown job kind:", kind)
         except Exception as e:
