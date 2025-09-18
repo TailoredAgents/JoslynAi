@@ -56,7 +56,7 @@ export default async function routes(fastify: FastifyInstance) {
       const u = (resp as any)?.usage || {};
       const model = (resp as any)?.model || (process.env.OPENAI_MODEL_PRIMARY || "gpt-5");
       const cost = computeCostCents({ model, input_tokens: u.input_tokens||0, output_tokens: u.output_tokens||0, cached_tokens: u.cached_tokens||0 }, MODEL_RATES);
-      await (prisma as any).agent_runs.create({ data: { org_id: (req as any).orgId || null, user_id: null, child_id: null, intent: "iep_extract", route: "/documents/:id/extract/iep", inputs_json: { documentId }, outputs_json: data||{}, tokens: (u.input_tokens||0)+(u.output_tokens||0), cost_cents: cost } });
+      await (prisma as any).agent_runs.create({ data: { org_id: (req as any).orgId || null, user_id: null, child_id: null, intent: "iep_extract", feature: "iep_extract", route: "/documents/:id/extract/iep", inputs_json: { documentId }, outputs_json: data||{}, tokens: (u.input_tokens||0)+(u.output_tokens||0), cost_cents: cost } });
     } catch {}
     if (!data) return reply.status(400).send({ error: "Extraction failed" });
 

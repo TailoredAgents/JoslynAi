@@ -14,6 +14,7 @@ ALTER TABLE IF EXISTS appeal_kits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS appeal_kit_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS one_pagers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS safety_phrases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS copilot_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS deadlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS letters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS claims ENABLE ROW LEVEL SECURITY;
@@ -62,7 +63,7 @@ DECLARE
 BEGIN
   FOR t IN SELECT unnest(ARRAY[
     'documents','doc_spans','iep_extract','iep_diffs','recommendations','denial_explanations',
-    'goal_rewrites','advocacy_outlines','research_summaries','appeal_kits','appeal_kit_items','one_pagers',
+    'goal_rewrites','advocacy_outlines','research_summaries','appeal_kits','appeal_kit_items','one_pagers','copilot_conversations',
     'deadlines','letters','claims','eobs','next_best_steps','notifications','agent_runs','glossaries',
     'share_links','child_profile','events','org_settings','org_members','invites','job_runs','entitlements'
   ])

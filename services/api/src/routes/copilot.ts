@@ -10,6 +10,58 @@ import { MODEL_RATES, computeCostCents } from "../lib/pricing.js";
 
 const DISCLAIMER = "This guidance is educational only and not legal or medical advice.";
 
+async function appendConversationEntry(params: { childId: string; orgId: string | null; query: string; intent: string; answer: string; artifacts: any[] }) {
+  const { childId, orgId, query, intent, answer, artifacts } = params;
+  if (!childId || !answer) return;
+  try {
+    const entry = {
+      query: (query || "").slice(0, 500),
+      intent,
+      answer: (answer || "").slice(0, 1000),
+      artifacts: Array.isArray(artifacts) ? artifacts.map((artifact: any) => {
+        if (!artifact || typeof artifact !== "object") return { kind: String(artifact) };
+        const normalized: Record<string, any> = { kind: artifact.kind || "unknown" };
+        if (artifact.document_id) normalized.document_id = artifact.document_id;
+        if (artifact.outline_id) normalized.outline_id = artifact.outline_id;
+        if (artifact.one_pager_id) normalized.one_pager_id = artifact.one_pager_id;
+        if (artifact.tag) normalized.tag = artifact.tag;
+        if (artifact.source) normalized.source = artifact.source;
+        return normalized;
+      }).filter(Boolean) : [],
+      created_at: new Date().toISOString(),
+    };
+
+    const existing = await (prisma as any).copilot_conversations.findUnique({ where: { child_id: childId } });
+    const messages = Array.isArray(existing?.messages_json) ? existing.messages_json : [];
+    const artifactsJson = Array.isArray(existing?.artifacts_json) ? existing.artifacts_json : [];
+    messages.push(entry);
+    while (messages.length > 20) messages.shift();
+
+    const artifactSet = new Set(artifactsJson.map((item: any) => JSON.stringify(item)));
+    entry.artifacts.forEach((artifact) => {
+      const key = JSON.stringify(artifact);
+      if (!artifactSet.has(key)) {
+        artifactSet.add(key);
+        artifactsJson.push(artifact);
+      }
+    });
+    while (artifactsJson.length > 50) artifactsJson.shift();
+
+    if (existing) {
+      await (prisma as any).copilot_conversations.update({
+        where: { child_id: childId },
+        data: { messages_json: messages, artifacts_json: artifactsJson, org_id: orgId },
+      });
+    } else {
+      await (prisma as any).copilot_conversations.create({
+        data: { child_id: childId, org_id: orgId, messages_json: messages, artifacts_json: artifactsJson },
+      });
+    }
+  } catch (err) {
+    console.error("[COPILOT] appendConversationEntry failed:", err);
+  }
+}
+
 function withDisclaimer(answer: string): string {
   const trimmed = (answer || "").trim();
   if (!trimmed) return DISCLAIMER;
@@ -96,6 +148,29 @@ export default async function routes(app: FastifyInstance) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const intentInfo = detectIntent(query);
+
+    const originalSend = reply.send.bind(reply);
+    (reply as any).send = (payload: any) => {
+      if (payload && typeof payload === "object" && childId) {
+        const answerText = typeof payload.answer === "string" ? payload.answer : "";
+        if (answerText) {
+          const artifactsValue = Array.isArray(payload.artifacts) ? payload.artifacts : [];
+          appendConversationEntry({
+            childId,
+            orgId: orgId ?? null,
+            query,
+            intent: payload.intent || intentInfo.intent,
+            answer: answerText,
+            artifacts: artifactsValue,
+          }).catch((err) => {
+            try {
+              (req as any).log?.warn?.({ err }, "copilot conversation append failed");
+            } catch {}
+          });
+        }
+      }
+      return originalSend(payload);
+    };
 
 
     if (intentInfo.intent === "recommendations.supports") {
@@ -1391,6 +1466,7 @@ ${excerptBlocks}`
             user_id: null,
             child_id: childId,
             intent: intentInfo.intent,
+            feature: intentInfo.intent,
             route: "/copilot",
             inputs_json: { query },
             outputs_json: { answer, followUps, summary },
