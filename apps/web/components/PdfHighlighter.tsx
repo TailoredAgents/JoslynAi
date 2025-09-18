@@ -44,7 +44,7 @@ export default function PdfHighlighter({ url, citations, docId }: { url: string;
 
         if (!spansByPage[i]) {
           try {
-            const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+            const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
             const res = await fetch(`${base}/documents/${docId}/spans?page=${i}`);
             const spans = await res.json();
             setSpansByPage(prev => ({ ...prev, [i]: spans || [] }));

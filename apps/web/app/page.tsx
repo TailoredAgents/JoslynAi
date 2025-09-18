@@ -6,7 +6,7 @@ import en from "../i18n/messages/en.json";
 import es from "../i18n/messages/es.json";
 import { useBootstrappedChild } from "../lib/use-child";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 const featureHighlights = [
   {

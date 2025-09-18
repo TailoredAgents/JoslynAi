@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 export default function ClaimPage() {
   const params = useParams<{ id: string }>();

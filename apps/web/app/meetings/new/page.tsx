@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBootstrappedChild } from "../../../lib/use-child";
 import { useSession } from "next-auth/react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 export default function NewMeetingPage() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -14,9 +14,9 @@ export default function NewMeetingPage() {
   const userId = typeof (session as any)?.user?.id === "string" ? String((session as any).user.id) : undefined;
   const { child, loading: childLoading } = useBootstrappedChild();
   const childId = (child as any)?.id || null;
-  const wsBase = (API_BASE || "http://localhost:8080").startsWith("https")
-    ? (API_BASE || "http://localhost:8080").replace(/^https/, "wss")
-    : (API_BASE || "http://localhost:8080").replace(/^http/, "ws");
+  const wsBase = (API_BASE || "/api/joslyn").startsWith("https")
+    ? (API_BASE || "/api/joslyn").replace(/^https/, "wss")
+    : (API_BASE || "/api/joslyn").replace(/^http/, "ws");
 
   async function connect() {
     if (!consented || !childId) return;

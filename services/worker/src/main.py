@@ -1,7 +1,7 @@
 import os, json, threading, datetime, hashlib
 import redis
 from src.ocr import process_pdf
-from src.index import embed_and_store
+from src.index import embed_and_store, _patch_job
 from src.extract import extract_iep, extract_eob
 from src.classify import heuristics, classify_text
 from src.notify import tick as notify_tick
@@ -655,9 +655,9 @@ def run():
                 except Exception:
                     patch_job = lambda *args, **kwargs: None
 
-                patch_job(job_id, "ocr", "processing", task.get("org_id"))
+                _patch_job(job_id, "ocr", "processing", task.get("org_id"))
                 task = process_pdf(task)
-                patch_job(job_id, "ocr", "done", task.get("org_id"))
+                _patch_job(job_id, "ocr", "done", task.get("org_id"))
 
                 filename = task.get("filename", "")
                 first_page_text = (task.get("pages") or [{"text": ""}])[0]["text"]
@@ -721,14 +721,14 @@ def run():
                     doc_type_final = doc_type_final or "other"
                     doc_tags = sorted(set([doc_type_final] + [f"domain:{d}" for d in doc_domains])) or ["other"]
 
-                patch_job(job_id, "index", "processing", task.get("org_id"))
+                _patch_job(job_id, "index", "processing", task.get("org_id"))
                 embed_and_store(task)
-                patch_job(job_id, "index", "done", task.get("org_id"))
+                _patch_job(job_id, "index", "done", task.get("org_id"))
 
                 if doc_type_final and isinstance(doc_type_final, str) and 'eob' in doc_type_final.lower():
-                    patch_job(job_id, "extract", "processing", task.get("org_id"))
+                    _patch_job(job_id, "extract", "processing", task.get("org_id"))
                     extract_eob(task)
-                    patch_job(job_id, "extract", "done", task.get("org_id"))
+                    _patch_job(job_id, "extract", "done", task.get("org_id"))
 
                 followups = []
                 if db_url and doc_child_id:
@@ -1833,6 +1833,14 @@ def run():
                 print("Unknown job kind:", kind)
         except Exception as e:
             print("Job failed:", e)
+            task_data = task if isinstance(task, dict) else {}
+            job_id = task_data.get("job_id")
+            org_id = task_data.get("org_id")
+            stage = task_data.get("kind") or "unknown"
+            try:
+                _patch_job(job_id, stage, "error", org_id, str(e)[:400])
+            except Exception as patch_err:
+                print("[WORKER] failed to mark job error:", patch_err)
 
 if __name__ == "__main__":
     run()

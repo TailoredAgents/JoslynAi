@@ -17,7 +17,7 @@ export default function DocumentViewPage() {
 
   useEffect(() => {
     if (!docId) return;
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
     fetch(`${base}/documents/${docId}/url`)
       .then((r) => r.json())

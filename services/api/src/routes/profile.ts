@@ -84,7 +84,7 @@ export default async function routes(app: FastifyInstance) {
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
 
-    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const token = crypto.randomBytes(24).toString("base64url");
     const password_hash = password ? hashPassword(password) : undefined;
     await (prisma as any).share_links.create({
       data: {

@@ -8,7 +8,7 @@ type BootstrappedChild = {
   name?: string | null;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 export function useBootstrappedChild() {
   const [child, setChild] = useState<BootstrappedChild | null>(null);

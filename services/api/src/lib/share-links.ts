@@ -1,4 +1,4 @@
-﻿import { prisma } from "./db.js";
+import { prisma } from "./db.js";
 
 export type ShareLinkRecord = {
   id: string;
@@ -15,7 +15,7 @@ export type ShareLinkRecord = {
 
 export async function fetchShareLinkByToken(token: string): Promise<ShareLinkRecord | null> {
   if (!token) return null;
-  const rows = (await prisma.$queryRawUnsafe<any[]>(
+  const rows = (await prisma.$queryRawUnsafe(
     "SELECT id, org_id, resource_type, resource_subtype, resource_id, token, password_hash, meta_json, expires_at, created_at FROM joslyn_fetch_share_link($1)",
     token
   )) as any[];

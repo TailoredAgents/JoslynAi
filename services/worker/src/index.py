@@ -100,12 +100,14 @@ def embed_and_store(task: dict):
     # Build bbox map by matching chunks to page blocks
     bbox_by_index: dict[int, tuple[float,float,float,float,float,float]] = {}
     # Download original PDF to derive coordinates
-    tmp_pdf = None
+    tmp_dir = None
+    bbox_doc = None
     try:
         if s3_key:
-            td = tempfile.mkdtemp()
-            tmp_pdf = os.path.join(td, "doc.pdf")
-            _download_from_s3(s3_key, tmp_pdf)
+            tmp_dir = tempfile.TemporaryDirectory()
+            tmp_path = os.path.join(tmp_dir.name, "doc.pdf")
+            _download_from_s3(s3_key, tmp_path)
+            bbox_doc = fitz.open(tmp_path)
     except Exception as e:
         print("[INDEX] download for bbox failed:", e)
     for p in pages:
@@ -120,35 +122,44 @@ def embed_and_store(task: dict):
             meta.append({"page": p["page"]})
 
     # If we have the pdf locally, compute bboxes for first match per chunk
-    if tmp_pdf:
+    if bbox_doc:
         try:
-            doc = fitz.open(tmp_pdf)
             for idx, m in enumerate(meta):
                 try:
                     page_num = int(m["page"]) - 1
-                    if page_num < 0 or page_num >= len(doc):
+                    if page_num < 0 or not bbox_doc or page_num >= len(bbox_doc):
                         continue
-                    page = doc[page_num]
+                    page = bbox_doc[page_num]
                     blocks = page.get_text("blocks")
                     needle = (chunks[idx] or "").strip()[:100].lower()
-                    # strip [Summary] prefix if present
                     if needle.startswith("[summary]"):
-                        needle = needle.split("\n",1)[-1].lower()
+                        needle = needle.split("\n", 1)[-1].lower()
                     best = None
                     for b in blocks:
-                        x0,y0,x1,y1,btxt,*_ = b
+                        x0, y0, x1, y1, btxt, *_ = b
                         if not isinstance(btxt, str):
                             continue
-                        hay = btxt.replace("\n"," ").strip().lower()
+                        hay = btxt.replace("\n", " ").strip().lower()
                         if needle and needle[:30] in hay:
-                            best = (x0,y0,x1,y1,page.rect.width,page.rect.height)
+                            best = (x0, y0, x1, y1, page.rect.width, page.rect.height)
                             break
                     if best:
                         bbox_by_index[idx] = best
-                except Exception as e:
+                except Exception:
                     continue
         except Exception as e:
             print("[INDEX] bbox compute failed:", e)
+        finally:
+            try:
+                bbox_doc.close()
+            except Exception:
+                pass
+            bbox_doc = None
+    if tmp_dir:
+        try:
+            tmp_dir.cleanup()
+        except Exception:
+            pass
 
     if not chunks:
         print("[INDEX] No text chunks to embed")
