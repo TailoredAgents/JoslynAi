@@ -42,7 +42,7 @@ export default async function routes(fastify: FastifyInstance) {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       const seeds = ["services", "accommodations", "goals", "placement", "minutes"];
-      const spansSets = await Promise.all(seeds.map(seed => retrieveForAsk(prisma as any, openai, childId, seed, 6)));
+      const spansSets = await Promise.all(seeds.map(seed => retrieveForAsk(prisma as any, openai, childId, seed, 6, id)));
       const spans = Array.from(new Map((spansSets.flat() as any[]).map((s: any) => [s.id, s])).values()).slice(0, 18);
       if (!spans.length) return reply.send({ overview: "I don't see enough content in your document yet.", citations: [] });
 
@@ -71,4 +71,5 @@ export default async function routes(fastify: FastifyInstance) {
     }
   );
 }
+
 

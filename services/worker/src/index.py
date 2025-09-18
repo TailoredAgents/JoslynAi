@@ -172,22 +172,28 @@ def embed_and_store(task: dict):
             for idx, (vec, m, text) in enumerate(zip(vectors, meta, chunks)):
                 vec_lit = "ARRAY[" + ",".join(str(x) for x in vec) + "]::vector"
                 bb = bbox_by_index.get(idx)
-                bbox_arr = None
+                bbox_values = None
                 pw = None
                 ph = None
                 if bb:
-                    x0,y0,x1,y1,pw,ph = bb
-                    bbox_arr = f"ARRAY[{x0},{y0},{(x1 - x0)},{(y1 - y0)}]::float8[]"
+                    x0, y0, x1, y1, pw, ph = bb
+                    bbox_values = [float(x0), float(y0), float(x1 - x0), float(y1 - y0)]
+                    if pw is not None:
+                        pw = float(pw)
+                    if ph is not None:
+                        ph = float(ph)
+                query = (
+                    "INSERT INTO doc_spans (document_id, org_id, page, bbox, page_width, page_height, text, embedding) "
+                    f"VALUES (%s, %s, %s, %s, %s, %s, %s, {vec_lit})"
+                )
                 cur.execute(
-                    f"""
-                    INSERT INTO doc_spans (document_id, org_id, page, bbox, page_width, page_height, text, embedding)
-                    VALUES (%s, %s, %s, {bbox_arr if bbox_arr else 'NULL'}, %s, %s, %s, {vec_lit})
-                    """,
-                    (document_id, task.get("org_id"), m["page"], pw, ph, text[:4000])
+                    query,
+                    (document_id, task.get("org_id"), m["page"], bbox_values, pw, ph, text[:4000])
                 )
         try:
             conn.execute("UPDATE documents SET processed_at = NOW() WHERE id=%s", (document_id,))
         except Exception:
             pass
         conn.commit()
+
 
