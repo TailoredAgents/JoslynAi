@@ -2,6 +2,10 @@ import { FastifyInstance } from "fastify";
 import { OpenAI } from "openai";
 import { prisma } from "../lib/db.js";
 
+function escapeRegex(source: string) {
+  return source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function applyGlossary(org_id: string | undefined, text: string, target: string) {
   if (!org_id) return text;
   try {
@@ -12,9 +16,11 @@ async function applyGlossary(org_id: string | undefined, text: string, target: s
     // terms like { en: 'occupational therapy', es: 'terapia ocupacional' }
     for (const key of Object.keys(terms)) {
       const val = terms[key];
-      const from = (val.en || key) as string;
-      const to = (val[target] || val.es || from) as string;
-      out = out.replace(new RegExp(from, 'gi'), to);
+      const from = ((val?.en ?? key) as string) || "";
+      const to = ((val?.[target] ?? val?.es ?? from) as string) || "";
+      if (!from || !to) continue;
+      const pattern = new RegExp(escapeRegex(from), "gi");
+      out = out.replace(pattern, to);
     }
     return out;
   } catch {
@@ -56,5 +62,3 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ report });
   });
 }
-
-

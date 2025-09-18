@@ -26,18 +26,20 @@ export default async function routes(app: FastifyInstance) {
 
     const [agentRuns, lettersSent, deadlines, claims, eobs, notifications, events] = await Promise.all([
       (prisma as any).agent_runs.count({ where: { created_at: whereTime, ...orgFilter } }),
-      (prisma as any).letters.count({ where: { status: "sent", sent_at: whereTime } }),
-      (prisma as any).deadlines.count({ where: { created_at: whereTime } }),
-      (prisma as any).claims.count({ where: { created_at: whereTime } }),
-      (prisma as any).eobs.count({ where: { created_at: whereTime } }),
-      (prisma as any).notifications.count({ where: { created_at: whereTime } }),
-      (prisma as any).events.count({ where: { created_at: whereTime } }),
+      (prisma as any).letters.count({ where: { status: "sent", sent_at: whereTime, ...orgFilter } }),
+      (prisma as any).deadlines.count({ where: { created_at: whereTime, ...orgFilter } }),
+      (prisma as any).claims.count({ where: { created_at: whereTime, ...orgFilter } }),
+      (prisma as any).eobs.count({ where: { created_at: whereTime, ...orgFilter } }),
+      (prisma as any).notifications.count({ where: { created_at: whereTime, ...orgFilter } }),
+      (prisma as any).events.count({ where: { created_at: whereTime, ...orgFilter } }),
     ]);
 
     const costAgg = await (prisma as any).agent_runs.aggregate({
       _sum: { cost_cents: true, tokens: true },
       where: { created_at: whereTime, ...orgFilter },
     });
+
+    const windowParams = orgId ? [from, to, orgId] : [from, to];
 
     const dailyAgentRuns = await ((prisma as any).$queryRawUnsafe(
       `
@@ -48,7 +50,7 @@ export default async function routes(app: FastifyInstance) {
       ${orgId ? "AND org_id = $3" : ""}
       GROUP BY 1 ORDER BY 1 ASC
       `,
-      orgId ? [from, to, orgId] : [from, to]
+      ...windowParams
     )) as any as { day: string; count: number }[];
 
     const dailyLetters = await ((prisma as any).$queryRawUnsafe(
@@ -57,9 +59,10 @@ export default async function routes(app: FastifyInstance) {
              COUNT(*)::int AS count
       FROM letters
       WHERE status='sent' AND sent_at BETWEEN $1 AND $2
+      ${orgId ? "AND org_id = $3" : ""}
       GROUP BY 1 ORDER BY 1 ASC
       `,
-      [from, to]
+      ...windowParams
     )) as any as { day: string; count: number }[];
 
     const featureBreakdown = await ((prisma as any).$queryRawUnsafe(
@@ -67,10 +70,11 @@ export default async function routes(app: FastifyInstance) {
       SELECT type, COUNT(*)::int AS count
       FROM events
       WHERE created_at BETWEEN $1 AND $2
+      ${orgId ? "AND org_id = $3" : ""}
       GROUP BY type
       ORDER BY count DESC
       `,
-      [from, to]
+      ...windowParams
     )) as any as { type: string; count: number }[];
 
     return reply.send({
@@ -94,4 +98,3 @@ export default async function routes(app: FastifyInstance) {
     });
   });
 }
-

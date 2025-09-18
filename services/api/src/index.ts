@@ -1,3 +1,4 @@
+import fastifyRawBody from "fastify-raw-body";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
@@ -53,6 +54,13 @@ const app = Fastify({
       remove: true,
     },
   },
+});
+
+await app.register(fastifyRawBody, {
+  field: "rawBody",
+  global: false,
+  encoding: "utf8",
+  runFirst: true,
 });
 
 await app.register(cors, { origin: (_origin, cb) => cb(null, true), credentials: true });
@@ -136,5 +144,6 @@ app
     app.log.error(err, "Failed to start API");
     process.exit(1);
   });
+
 
 
