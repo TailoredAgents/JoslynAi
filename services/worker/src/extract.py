@@ -47,6 +47,8 @@ def extract_eob(task: dict):
     try:
         url = f"{API_URL}/internal/eob/ingest"
         headers = {"x-internal-key": INTERNAL_KEY, "Content-Type": "application/json"}
+        if task.get("org_id"):
+            headers["x-org-id"] = task["org_id"]
         requests.post(url, headers=headers, json={
             "child_id": task.get("child_id"),
             "document_id": document_id,

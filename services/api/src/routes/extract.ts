@@ -62,9 +62,10 @@ export default async function routes(fastify: FastifyInstance) {
 
     // Upsert structured columns into iep_extract
     await prisma.$executeRawUnsafe(
-      `INSERT INTO iep_extract (document_id, services_json, goals_json, accommodations_json, placement, start_date, end_date, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO iep_extract (document_id, org_id, services_json, goals_json, accommodations_json, placement, start_date, end_date, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (document_id) DO UPDATE SET
+         org_id = EXCLUDED.org_id,
          services_json = EXCLUDED.services_json,
          goals_json = EXCLUDED.goals_json,
          accommodations_json = EXCLUDED.accommodations_json,
@@ -73,6 +74,7 @@ export default async function routes(fastify: FastifyInstance) {
          end_date = EXCLUDED.end_date,
          notes = EXCLUDED.notes`,
       documentId,
+      orgId || null,
       JSON.stringify(data.services || []),
       JSON.stringify(data.goals || []),
       JSON.stringify(data.accommodations || []),

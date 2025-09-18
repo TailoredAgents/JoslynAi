@@ -1,8 +1,9 @@
 import { FastifyInstance } from "fastify";
-import { prisma } from "../lib/db.js";
+import { prisma, runWithOrgContext } from "../lib/db.js";
 import { OpenAI } from "openai";
 import QRCode from "qrcode";
 import { orgIdFromRequest } from "../lib/child.js";
+import { fetchShareLinkByToken } from "../lib/share-links.js";
 import crypto from "node:crypto";
 
 function hashPassword(password: string) {
@@ -112,7 +113,7 @@ export default async function routes(app: FastifyInstance) {
 
   app.get<{ Params: { token: string }, Querystring: { password?: string } }>("/share/:token", async (req, reply) => {
     const token = (req.params as any).token;
-    const link = await (prisma as any).share_links.findUnique({ where: { token } });
+    const link = await fetchShareLinkByToken(token);
     if (!link) return reply.status(404).send({ error: "not_found" });
     if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
       return reply.status(410).send({ error: "expired" });
@@ -125,52 +126,65 @@ export default async function routes(app: FastifyInstance) {
       }
     }
 
-    if (link.resource_type === "profile") {
-      const prof = await (prisma as any).child_profile.findFirst({ where: { child_id: link.resource_id } });
-      if (!prof) return reply.status(404).send({ error: "profile_not_found" });
-
-      const meta = (link as any).meta_json || {};
-      const allowed = Array.isArray(meta?.allowed_fields) ? meta.allowed_fields : undefined;
-      const fullProfile = prof.profile_json || {};
-      const scoped: Record<string, any> = {};
-      if (allowed && allowed.length) {
-        for (const key of allowed) {
-          if (key in fullProfile) scoped[key] = fullProfile[key];
+    const response = await runWithOrgContext(link.org_id, async () => {
+      if (link.resource_type === "profile") {
+        const prof = await (prisma as any).child_profile.findFirst({ where: { child_id: link.resource_id } });
+        if (!prof) {
+          return { status: 404, body: { error: "profile_not_found" } };
         }
-      } else {
-        Object.assign(scoped, fullProfile);
+
+        const meta = link.meta_json || {};
+        const allowed = Array.isArray(meta?.allowed_fields) ? meta.allowed_fields : undefined;
+        const fullProfile = prof.profile_json || {};
+        const scoped: Record<string, any> = {};
+        if (allowed && allowed.length) {
+          for (const key of allowed) {
+            if (key in fullProfile) scoped[key] = fullProfile[key];
+          }
+        } else {
+          Object.assign(scoped, fullProfile);
+        }
+
+        return {
+          status: 200,
+          body: {
+            profile: scoped,
+            meta: {
+              allowed_fields: allowed || Object.keys(scoped),
+              resource_subtype: link.resource_subtype,
+              resource_type: link.resource_type,
+              expires_at: link.expires_at,
+              version: meta?.version || "profile_v1",
+            },
+          },
+        };
       }
 
-      return reply.send({
-        profile: scoped,
-        meta: {
-          allowed_fields: allowed || Object.keys(scoped),
-          resource_subtype: link.resource_subtype,
-          resource_type: link.resource_type,
-          expires_at: link.expires_at,
-          version: meta?.version || "profile_v1"
+      if (link.resource_type === "one_pager") {
+        const onePager = await (prisma as any).one_pagers.findUnique({ where: { id: link.resource_id } });
+        if (!onePager) {
+          return { status: 404, body: { error: "one_pager_not_found" } };
         }
-      });
-    }
+        return {
+          status: 200,
+          body: {
+            one_pager: onePager.content_json || {},
+            meta: {
+              audience: onePager.audience,
+              language_primary: onePager.language_primary,
+              language_secondary: onePager.language_secondary,
+              resource_type: link.resource_type,
+              resource_subtype: link.resource_subtype,
+              expires_at: link.expires_at,
+            },
+          },
+        };
+      }
 
-    if (link.resource_type === "one_pager") {
-      const onePager = await (prisma as any).one_pagers.findUnique({ where: { id: link.resource_id } });
-      if (!onePager) return reply.status(404).send({ error: "one_pager_not_found" });
-      const content = onePager.content_json || {};
-      return reply.send({
-        one_pager: content,
-        meta: {
-          audience: onePager.audience,
-          language_primary: onePager.language_primary,
-          language_secondary: onePager.language_secondary,
-          resource_type: link.resource_type,
-          resource_subtype: link.resource_subtype,
-          expires_at: link.expires_at
-        }
-      });
-    }
+      return { status: 400, body: { error: "unsupported" } };
+    });
 
-    return reply.status(400).send({ error: "unsupported" });
+    return reply.status(response.status).send(response.body);
   });
 }
 

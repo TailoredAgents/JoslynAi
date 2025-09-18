@@ -1,4 +1,4 @@
--- Enable required extensions
+﻿-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -42,6 +42,45 @@ CREATE TRIGGER trg_doc_spans_tsv
 BEFORE INSERT OR UPDATE ON doc_spans
 FOR EACH ROW EXECUTE FUNCTION doc_spans_tsv_update();
 
+-- Helpers for privileged access from application code
+CREATE OR REPLACE FUNCTION joslyn_fetch_share_link(p_token text)
+RETURNS TABLE (
+  id uuid,
+  org_id uuid,
+  resource_type text,
+  resource_subtype text,
+  resource_id text,
+  token text,
+  password_hash text,
+  meta_json jsonb,
+  expires_at timestamptz,
+  created_at timestamptz
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.id, s.org_id, s.resource_type, s.resource_subtype, s.resource_id, s.token, s.password_hash, s.meta_json, s.expires_at, s.created_at
+  FROM share_links s
+  WHERE s.token = p_token
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION joslyn_notifications_due(p_limit integer DEFAULT 10)
+RETURNS TABLE (
+  id uuid,
+  org_id uuid,
+  payload_json jsonb,
+  send_at timestamptz
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT n.id, n.org_id, n.payload_json, n.send_at
+  FROM notifications n
+  WHERE n.sent_at IS NULL AND n.send_at <= NOW()
+  ORDER BY n.send_at ASC
+  LIMIT COALESCE(p_limit, 10);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Seed baseline timeline rules (idempotent via unique constraint on jurisdiction+kind)
 INSERT INTO timeline_rules (id, jurisdiction, kind, delta_days, description, source_url, active, created_at, updated_at)
 VALUES
@@ -106,4 +145,5 @@ UPDATE job_runs j
 SET org_id = c.org_id
 FROM children c
 WHERE j.child_id = c.id AND j.org_id IS NULL;
+
 
