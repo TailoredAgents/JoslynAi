@@ -1,19 +1,25 @@
 import { prisma } from "./db.js";
 
-export function orgIdFromRequest(req: any): string {
-  return (
-    (req?.orgId as string) ||
-    (req?.headers?.['x-org-id'] as string) ||
-    (req?.user?.org_id as string) ||
-    'demo-org'
-  );
-}
+export const FALLBACK_ORG_ID = process.env.DEMO_ORG_ID && process.env.DEMO_ORG_ID.trim()
+  ? process.env.DEMO_ORG_ID.trim()
+  : "00000000-0000-4000-8000-000000000000";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isUuid(value: string | null | undefined): boolean {
   if (!value) return false;
   return UUID_REGEX.test(value);
+}
+
+export function orgIdFromRequest(req: any): string {
+  const candidate = (
+    (req?.orgId as string) ||
+    (req?.headers?.["x-org-id"] as string) ||
+    (req?.user?.org_id as string) ||
+    ""
+  ).trim();
+
+  return isUuid(candidate) ? candidate : FALLBACK_ORG_ID;
 }
 
 export function slugifyCandidate(input: string | null | undefined): string {
@@ -68,7 +74,7 @@ export async function ensureChildRecord({
   fallbackName?: string;
   orgId?: string | null;
 }) {
-  const scopedOrgId = orgId || "demo-org";
+  const scopedOrgId = orgId || FALLBACK_ORG_ID;
   if (identifier) {
     const found = await (prisma as any).children.findFirst({
       where: isUuid(identifier)
@@ -95,5 +101,3 @@ export async function ensureChildRecord({
     select: { id: true, slug: true, name: true },
   });
 }
-
-

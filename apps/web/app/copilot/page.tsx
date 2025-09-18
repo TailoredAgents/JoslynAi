@@ -55,7 +55,7 @@ export default function CopilotPage() {
 
   const { child, loading: childLoading, error: childError, refresh: refreshChild } = useBootstrappedChild();
   const childId = child?.id ?? null;
-  const childReady = Boolean(childId);
+  const childReady = childId !== null;
 
   useEffect(() => {
     const currentId = childId;
@@ -368,28 +368,3 @@ export default function CopilotPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
