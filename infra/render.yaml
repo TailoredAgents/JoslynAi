@@ -88,7 +88,7 @@ services:
       - key: PRICE_PRO
         sync: false
 
-  - type: background_worker
+  - type: worker
     name: iep-ally-worker
     env: docker
     plan: starter
