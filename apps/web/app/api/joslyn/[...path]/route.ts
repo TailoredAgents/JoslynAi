@@ -39,9 +39,11 @@ function buildIdentity(session: any, cookieStore: CookieStore) {
   };
 }
 
-async function proxy(request: NextRequest, context: { params: { path?: string[] } }) {
+type RouteContext = { params: { path: string[] } };
+
+async function proxy(request: NextRequest, context: RouteContext) {
   const base = sanitizeBase(API_ORIGIN);
-  const pathSegments = context.params.path || [];
+  const pathSegments = Array.isArray(context?.params?.path) ? context.params.path : [];
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
   const targetUrl = new URL(targetPath, base);
   if (request.nextUrl.search) {
@@ -83,26 +85,9 @@ async function proxy(request: NextRequest, context: { params: { path?: string[] 
   });
 }
 
-export async function GET(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
-
-export async function POST(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
-
-export async function PUT(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
-
-export async function PATCH(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
-
-export async function DELETE(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
-
-export async function OPTIONS(request: NextRequest, context: { params: { path?: string[] } }) {
-  return proxy(request, context);
-}
+export async function GET(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function POST(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function PUT(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function PATCH(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function DELETE(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function OPTIONS(request: NextRequest, context: RouteContext) { return proxy(request, context); }
