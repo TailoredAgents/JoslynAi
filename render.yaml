@@ -1,0 +1,141 @@
+services:
+  - type: web
+    name: iep-ally-web
+    env: docker
+    plan: starter
+    dockerfilePath: ./infra/docker/web.Dockerfile
+    buildContext: .
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: /api/joslyn
+      - key: JOSLYN_API_ORIGIN
+        fromService:
+          name: iep-ally-api
+          type: web
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+
+  - type: web
+    name: iep-ally-api
+    env: docker
+    plan: starter
+    dockerfilePath: ./infra/docker/api.Dockerfile
+    buildContext: .
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iep-ally-postgres
+      - key: REDIS_URL
+        fromService:
+          name: iep-ally-redis
+          type: redis
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL_PRIMARY
+        value: gpt-5
+      - key: OPENAI_MODEL_MINI
+        value: gpt-5-mini
+      - key: OPENAI_EMBEDDINGS_MODEL
+        value: text-embedding-3-small
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_SELF_BASE
+        value: http://iep-ally-api:8080
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_FROM
+        value: no-reply@joslyn-ai.app
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL
+        fromService:
+          name: iep-ally-web
+          type: web
+      - key: CORS_ORIGINS
+        fromService:
+          name: iep-ally-web
+          type: web
+      - key: MODEL_RATES_JSON
+        value: '{"gpt-5":{"in":0.000002,"out":0.000006},"gpt-5-mini":{"in":0.000001,"out":0.000003},"gpt-5-nano":{"in":0.0000002,"out":0.0000004},"default":{"in":0.000002,"out":0.000006}}'
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PRICE_BASIC
+        sync: false
+      - key: PRICE_PRO
+        sync: false
+
+  - type: private_service
+    name: iep-ally-worker
+    env: docker
+    plan: starter
+    dockerfilePath: ./infra/docker/worker.Dockerfile
+    buildContext: .
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iep-ally-postgres
+      - key: REDIS_URL
+        fromService:
+          name: iep-ally-redis
+          type: redis
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL_PRIMARY
+        value: gpt-5
+      - key: OPENAI_MODEL_MINI
+        value: gpt-5-mini
+      - key: OPENAI_EMBEDDINGS_MODEL
+        value: text-embedding-3-small
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: RETENTION_DAYS
+        value: 365
+      - key: API_URL
+        fromService:
+          name: iep-ally-api
+          type: web
+
+databases:
+  - name: iep-ally-postgres
+    databaseName: joslyn_ai
+    plan: starter
+    postgresMajorVersion: 16
+
+redis:
+  - name: iep-ally-redis
+    plan: starter
+
