@@ -2,12 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    turbo: {
-      rules: {},
-    },
-  },
+  // Use Webpack for production builds to avoid Turbopack UTF-8 strictness
 };
 
 export default nextConfig;
-
