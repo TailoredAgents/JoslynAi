@@ -9,7 +9,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "baseUrl": ".",
+    "paths": {
+      "@joslyn-ai/core": ["../packages/core/src/index.ts"],
+      "@joslyn-ai/core/*": ["../packages/core/src/*"]
+    }
   },
   "include": ["src/**/*"]
 }

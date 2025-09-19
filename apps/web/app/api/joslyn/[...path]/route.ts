@@ -43,7 +43,7 @@ type RouteContext = { params: { path: string[] } };
 
 async function proxy(request: NextRequest, context: RouteContext) {
   const base = sanitizeBase(API_ORIGIN);
-  const pathSegments = Array.isArray(context?.params?.path) ? context.params.path : [];
+  const pathSegments = Array.isArray(params?.path) ? params.path : [];
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
   const targetUrl = new URL(targetPath, base);
   if (request.nextUrl.search) {
