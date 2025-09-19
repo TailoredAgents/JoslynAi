@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/auth-options";
@@ -39,14 +38,15 @@ function buildIdentity(session: any, cookieStore: CookieStore) {
   };
 }
 
-async function proxy(request: NextRequest, params: { path: string[] }) {
+async function proxy(request: Request, params: { path: string[] }) {
   const base = sanitizeBase(API_ORIGIN);
   const pathSegments = Array.isArray(params?.path) ? params.path : [];
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
   const targetUrl = new URL(targetPath, base);
-  if (request.nextUrl.search) {
-    targetUrl.search = request.nextUrl.search;
-  }
+  try {
+    const inUrl = new URL(request.url);
+    if (inUrl.search) targetUrl.search = inUrl.search;
+  } catch {}
 
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
@@ -83,21 +83,21 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
   });
 }
 
-export async function GET(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function GET(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
-export async function POST(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function POST(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
-export async function PUT(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function PUT(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
-export async function PATCH(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function PATCH(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
-export async function DELETE(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function DELETE(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
-export async function OPTIONS(request: NextRequest, ctx: { params: { path: string[] } }) {
+export async function OPTIONS(request: Request, ctx: { params: { path: string[] } }) {
   return proxy(request, ctx.params);
 }
