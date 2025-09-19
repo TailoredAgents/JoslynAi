@@ -39,9 +39,7 @@ function buildIdentity(session: any, cookieStore: CookieStore) {
   };
 }
 
-type RouteContext = { params: { path: string[] } };
-
-async function proxy(request: NextRequest, context: RouteContext) {
+async function proxy(request: NextRequest, params: { path: string[] }) {
   const base = sanitizeBase(API_ORIGIN);
   const pathSegments = Array.isArray(params?.path) ? params.path : [];
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
@@ -85,9 +83,9 @@ async function proxy(request: NextRequest, context: RouteContext) {
   });
 }
 
-export async function GET(request: NextRequest, context: RouteContext) { return proxy(request, context); }
-export async function POST(request: NextRequest, context: RouteContext) { return proxy(request, context); }
-export async function PUT(request: NextRequest, context: RouteContext) { return proxy(request, context); }
-export async function PATCH(request: NextRequest, context: RouteContext) { return proxy(request, context); }
-export async function DELETE(request: NextRequest, context: RouteContext) { return proxy(request, context); }
-export async function OPTIONS(request: NextRequest, context: RouteContext) { return proxy(request, context); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
