@@ -6,8 +6,9 @@ COPY apps/web ./apps/web
 COPY packages/ui ./packages/ui
 COPY packages/core ./packages/core
 RUN pnpm install --frozen-lockfile
-# Strip UTF-8 BOM from source files to avoid Turbopack UTF-8 errors during Next build
-RUN find /app/apps/web -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) -exec sed -i '1s/^\xEF\xBB\xBF//' {} +
+# Normalize encodings: strip UTF-8 BOM and rewrite as UTF-8
+RUN find /app/apps/web -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) -exec sed -i '1s/^\xEF\xBB\xBF//' {} + \
+ && find /app/apps/web -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) -print0 | xargs -0 -I{} sh -c 'iconv -f utf-8 -t utf-8 "{}" -o "{}".u8 || cp "{}" "{}".u8; mv "{}".u8 "{}"'
 RUN pnpm --filter @joslyn-ai/web build
 
 FROM node:22-slim
