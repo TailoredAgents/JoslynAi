@@ -88,14 +88,13 @@ services:
       - key: PRICE_PRO
         sync: false
 
-  - type: private_service
+  - type: background_worker
     name: iep-ally-worker
     env: docker
     plan: starter
     dockerfilePath: ./infra/docker/worker.Dockerfile
     buildContext: .
     autoDeploy: true
-    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -138,4 +137,3 @@ databases:
 redis:
   - name: iep-ally-redis
     plan: starter
-
