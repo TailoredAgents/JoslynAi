@@ -2,10 +2,7 @@ services:
   - type: web
     name: iep-ally-web
     env: docker
-    plan: starter
     dockerfilePath: ./infra/docker/web.Dockerfile
-    autoDeploy: true
-    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
@@ -19,10 +16,7 @@ services:
   - type: web
     name: iep-ally-api
     env: docker
-    plan: starter
     dockerfilePath: ./infra/docker/api.Dockerfile
-    autoDeploy: true
-    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -80,10 +74,7 @@ services:
   - type: web
     name: iep-ally-worker
     env: docker
-    plan: starter
     dockerfilePath: ./infra/docker/worker.Dockerfile
-    autoDeploy: true
-    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 9090
