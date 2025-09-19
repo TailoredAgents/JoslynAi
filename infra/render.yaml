@@ -34,9 +34,7 @@ services:
         fromDatabase:
           name: iep-ally-postgres
       - key: REDIS_URL
-        fromService:
-          name: iep-ally-redis
-          type: redis
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL_PRIMARY
@@ -97,9 +95,7 @@ services:
         fromDatabase:
           name: iep-ally-postgres
       - key: REDIS_URL
-        fromService:
-          name: iep-ally-redis
-          type: redis
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL_PRIMARY
@@ -121,9 +117,7 @@ services:
       - key: RETENTION_DAYS
         value: 365
       - key: API_URL
-        fromService:
-          name: iep-ally-api
-          type: web
+        sync: false
 
 databases:
   - name: iep-ally-postgres
