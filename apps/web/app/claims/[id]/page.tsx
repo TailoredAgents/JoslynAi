@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -24,8 +24,8 @@ export default function ClaimPage() {
   }, [claimId]);
 
   const amountEntries = useMemo(() => Object.entries(data?.amounts || {}).map(([label, value]) => ({ label, value })), [data?.amounts]);
-  if (!claimId) return <div className="p-6 text-sm text-slate-500">Loading claim…</div>;
-  if (loading) return <div className="p-6 text-sm text-slate-500">Pulling claim details…</div>;
+  if (!claimId) return <div className="p-6 text-sm text-slate-500">Loading claimâ€¦</div>;
+  if (loading) return <div className="p-6 text-sm text-slate-500">Pulling claim detailsâ€¦</div>;
   if (error) return <div className="p-6 text-sm text-red-600">Unable to load claim: {error}</div>;
   if (!data) return <div className="p-6 text-sm text-slate-500">Claim not available.</div>;
 
@@ -82,9 +82,9 @@ export default function ClaimPage() {
           <div className="rounded-3xl border border-brand-100 bg-brand-50/70 p-6 text-xs text-brand-700">
             <p className="font-heading text-sm text-brand-700">Suggested follow-up</p>
             <ul className="mt-3 space-y-2 leading-relaxed">
-              <li>• Compare service codes with your IEP minutes.</li>
-              <li>• Attach supporting documentation under Documents.</li>
-              <li>• Draft a reimbursement inquiry letter if anything looks off.</li>
+              <li>â€¢ Compare service codes with your IEP minutes.</li>
+              <li>â€¢ Attach supporting documentation under Documents.</li>
+              <li>â€¢ Draft a reimbursement inquiry letter if anything looks off.</li>
             </ul>
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-500">

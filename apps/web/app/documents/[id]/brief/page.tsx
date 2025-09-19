@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -75,8 +75,8 @@ export default function BriefPage() {
     }
   }
 
-  if (!docId) return <div className="p-6 text-sm text-slate-500">Loading brief…</div>;
-  if (loading) return <div className="p-6 text-sm text-slate-500">Generating brief…</div>;
+  if (!docId) return <div className="p-6 text-sm text-slate-500">Loading briefâ€¦</div>;
+  if (loading) return <div className="p-6 text-sm text-slate-500">Generating briefâ€¦</div>;
   if (error) return <div className="p-6 text-sm text-red-600">Unable to load brief: {error}</div>;
   if (!data) return <div className="p-6 text-sm text-slate-500">Brief not available.</div>;
 
@@ -93,7 +93,7 @@ export default function BriefPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link className="inline-flex items-center rounded-full border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400" href={`/documents/${docId}/view`}>
-              Open document →
+              Open document â†’
             </Link>
             <Link className="inline-flex items-center rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" href={`/letters/new?doc=${docId}`}>
               Draft a follow-up letter
@@ -166,10 +166,10 @@ export default function BriefPage() {
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>Page {c.page}</span>
                         <Link className="font-semibold text-brand-600" href={`/documents/${id}/view?page=${c.page}&q=${encodeURIComponent(c.quote || "")}`} target="_blank">
-                          Jump to page →
+                          Jump to page â†’
                         </Link>
                       </div>
-                      <p className="mt-2 text-sm text-slate-700">{c.quote?.slice(0, 160)}{c.quote?.length > 160 ? "�" : ""}</p>
+                      <p className="mt-2 text-sm text-slate-700">{c.quote?.slice(0, 160)}{c.quote?.length > 160 ? "ï¿½" : ""}</p>
                     </li>
                   ))}
                 </ul>

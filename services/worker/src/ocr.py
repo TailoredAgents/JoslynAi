@@ -2,10 +2,19 @@ import os, tempfile, subprocess
 import boto3
 import fitz  # PyMuPDF
 
-S3_ENDPOINT = os.environ.get("S3_ENDPOINT")
-S3_BUCKET = os.environ.get("S3_BUCKET")
-S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID")
-S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY")
+def _trim_env(name: str):
+    v = os.environ.get(name)
+    if v is None:
+        return None
+    try:
+        return v.strip()
+    except Exception:
+        return v
+
+S3_ENDPOINT = _trim_env("S3_ENDPOINT")
+S3_BUCKET = _trim_env("S3_BUCKET")
+S3_ACCESS_KEY_ID = _trim_env("S3_ACCESS_KEY_ID")
+S3_SECRET_ACCESS_KEY = _trim_env("S3_SECRET_ACCESS_KEY")
 
 def _download_from_s3(key: str, path: str):
     s3 = boto3.client(
@@ -50,4 +59,3 @@ def process_pdf(task: dict) -> dict:
 
         task["pages"] = pages
         return task
-

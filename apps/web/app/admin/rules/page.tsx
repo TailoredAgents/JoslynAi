@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 import { useMemo, useState, useEffect } from "react";
 
 type Rule = {
@@ -126,7 +126,7 @@ export default function AdminRulesPage() {
         </div>
       </header>
 
-      {loading && <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Loading rules…</div>}
+      {loading && <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Loading rulesâ€¦</div>}
       {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -174,7 +174,7 @@ export default function AdminRulesPage() {
                 onClick={() => save(rule)}
                 disabled={saving === rule.id}
               >
-                {saving === rule.id ? "Saving…" : "Save changes"}
+                {saving === rule.id ? "Savingâ€¦" : "Save changes"}
               </button>
             </div>
           </article>

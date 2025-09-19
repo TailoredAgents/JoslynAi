@@ -14,4 +14,5 @@ docker-data/
 .idea/
 .vscode/
 pnpm-debug.log
-
+*.tsbuildinfo
+docs/RENDER_CREDENTIALS.md

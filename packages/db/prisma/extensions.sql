@@ -1,4 +1,4 @@
-﻿-- Enable required extensions
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -82,16 +82,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Seed baseline timeline rules (idempotent via unique constraint on jurisdiction+kind)
+-- Seed safely without relying on a pre-existing unique constraint
 INSERT INTO timeline_rules (id, jurisdiction, kind, delta_days, description, source_url, active, created_at, updated_at)
-VALUES
-  (gen_random_uuid(), 'US-*', 'iep_annual_review', 365, 'Annual IEP review due', NULL, true, now(), now()),
-  (gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true, now(), now())
-ON CONFLICT (jurisdiction, kind) DO NOTHING;
+SELECT gen_random_uuid(), 'US-*', 'iep_annual_review', 365, 'Annual IEP review due', NULL, true, now(), now()
+WHERE NOT EXISTS (
+  SELECT 1 FROM timeline_rules WHERE jurisdiction = 'US-*' AND kind = 'iep_annual_review'
+);
+
+INSERT INTO timeline_rules (id, jurisdiction, kind, delta_days, description, source_url, active, created_at, updated_at)
+SELECT gen_random_uuid(), 'US-*', 'initial_evaluation_due', 60, 'Initial evaluation must be completed', NULL, true, now(), now()
+WHERE NOT EXISTS (
+  SELECT 1 FROM timeline_rules WHERE jurisdiction = 'US-*' AND kind = 'initial_evaluation_due'
+);
 
 -- Seed demo child for default workspace
+-- Ensure needed uniques exist for idempotent upserts
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_children_org_slug ON children (org_id, slug);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_entitlements_org ON entitlements (org_id);
+
 INSERT INTO children (id, org_id, name, school_name, dob, created_at, slug)
 VALUES (gen_random_uuid(), '00000000-0000-4000-8000-000000000000', 'Demo Child', NULL, NULL, now(), 'demo-child')
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (org_id, slug) DO NOTHING;
 
 -- Seed entitlements for demo org (dev)
 INSERT INTO entitlements (id, org_id, plan, features_json)
@@ -145,5 +156,6 @@ UPDATE job_runs j
 SET org_id = c.org_id
 FROM children c
 WHERE j.child_id = c.id AND j.org_id IS NULL;
+
 
 

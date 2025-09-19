@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -467,7 +467,7 @@ export default function AdvocacyOutlinesPage() {
             <p className="text-sm font-heading text-slate-900">Tips</p>
             <ul className="mt-3 space-y-2 text-xs text-slate-600">
               <li>Use the facts section to anchor your outline in documented evidence.</li>
-              <li>Update remedies before exporting to reflect the caregiver�s requested resolution.</li>
+              <li>Update remedies before exporting to reflect the caregiver’s requested resolution.</li>
               <li>Copy the outline into your mediation or complaint letter once each section looks right.</li>
             </ul>
           </div>

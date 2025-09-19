@@ -10,15 +10,56 @@ export default async function routes(app: FastifyInstance) {
   const stripe = key ? new Stripe(key, { apiVersion: "2023-10-16" as any }) : (null as any);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  // Feature matrices per plan (nickname on Stripe Price)
+  // Plans we support: basic ($9), pro ($29), business ($79)
+  const FEATURES_BY_PLAN: Record<string, any> = {
+    free: { ask: true, brief: true, letters: { render: false, send: false }, smart_attachments: false },
+    basic: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false },
+    pro: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true },
+    business: {
+      ask: true,
+      brief: true,
+      letters: { render: true, send: true },
+      smart_attachments: true,
+      advocacy: true,
+      recommendations: true,
+      iep_diff: true,
+      admin_usage: true,
+    },
+    // Back-compat alias for older "starter" nickname
+    starter: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false },
+  };
+
+  // Whitelisted price IDs by plan from env; prevents client from selecting arbitrary prices
+  const PRICE_ENV_BY_PLAN: Record<string, string | undefined> = {
+    basic: (process.env.PRICE_BASIC || "").trim() || undefined,
+    pro: (process.env.PRICE_PRO || "").trim() || undefined,
+    business: (process.env.PRICE_BUSINESS || "").trim() || undefined,
+  };
+
   app.post("/billing/checkout", async (req, reply) => {
     if (!stripe) return reply.status(501).send({ error: "billing_disabled" });
-    const { org_id, price_id, success_url, cancel_url } = (req.body as any);
+    const { org_id, price_id, plan, success_url, cancel_url } = (req.body as any);
+    if (!org_id) return reply.code(400).send({ error: "missing_org_id" });
+
+    const planKey = String(plan || "").toLowerCase();
+    let priceId: string | undefined = PRICE_ENV_BY_PLAN[planKey];
+    const allowed = new Set(Object.values(PRICE_ENV_BY_PLAN).filter(Boolean) as string[]);
+    if (!priceId && typeof price_id === "string" && price_id.trim()) {
+      const trimmed = price_id.trim();
+      if (allowed.has(trimmed)) priceId = trimmed;
+    }
+    if (!priceId) priceId = PRICE_ENV_BY_PLAN.basic;
+    if (!priceId) return reply.code(400).send({ error: "price_not_configured" });
+
+    const trialDays = Number(process.env.STRIPE_TRIAL_DAYS || "0");
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: price_id, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url,
       cancel_url,
-      metadata: { org_id },
+      metadata: { org_id, plan: planKey || undefined },
+      subscription_data: trialDays > 0 ? { trial_period_days: trialDays, metadata: { org_id } } : { metadata: { org_id } },
     });
     return reply.send({ url: session.url });
   });
@@ -54,17 +95,24 @@ export default async function routes(app: FastifyInstance) {
     }
 
     try {
-      if (event.type === "customer.subscription.updated" || event.type === "checkout.session.completed") {
+      if (
+        event.type === "customer.subscription.updated" ||
+        event.type === "checkout.session.completed" ||
+        event.type === "customer.subscription.deleted"
+      ) {
         const obj: any = event.data?.object || {};
         const meta: any = obj.metadata || {};
         const org_id = meta.org_id || obj.client_reference_id;
         if (!org_id) {
           app.log.warn({ eventId: event.id }, "stripe webhook missing org_id");
         } else {
-          const plan = obj.items?.data?.[0]?.price?.nickname || "pro";
-          const features = plan === "pro"
-            ? { ask: true, brief: true, letters: true, smart_attachments: true }
-            : { ask: true, brief: true, letters: false, smart_attachments: false };
+          let plan = String(obj.items?.data?.[0]?.price?.nickname || "basic").toLowerCase();
+          // Normalize common aliases
+          if (plan === "starter") plan = "basic";
+          if (event.type === "customer.subscription.deleted") {
+            plan = "free";
+          }
+          const features = FEATURES_BY_PLAN[plan] || FEATURES_BY_PLAN["starter"];
           await (prisma as any).entitlements.upsert({
             where: { org_id },
             update: { plan, features_json: features },

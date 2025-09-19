@@ -69,7 +69,8 @@ services:
       dockerfile: infra/docker/web.Dockerfile
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_BASE_URL: /api/joslyn\n      JOSLYN_API_ORIGIN: http://api:8080
+      NEXT_PUBLIC_API_BASE_URL: /api/joslyn
+      JOSLYN_API_ORIGIN: http://api:8080
     depends_on:
       api:
         condition: service_started

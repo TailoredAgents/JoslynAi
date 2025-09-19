@@ -31,11 +31,11 @@ function loadTemplate(kind: string) {
 }
 
 function buildAttachmentUrl(key: string) {
-  const bucket = process.env.S3_BUCKET;
+  const bucket = (process.env.S3_BUCKET || "").trim();
   if (!bucket) {
     throw new Error("S3_BUCKET not configured");
   }
-  let endpoint = process.env.S3_ENDPOINT;
+  let endpoint = (process.env.S3_ENDPOINT || "").trim();
   if (!endpoint) {
     return `https://${bucket}.s3.amazonaws.com/${key}`;
   }
