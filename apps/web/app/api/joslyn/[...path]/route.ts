@@ -83,9 +83,21 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
   });
 }
 
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
-export async function (request: NextRequest, { params }: { params: { path: string[] } }) { return proxy(request, params); }
+export async function GET(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
+export async function POST(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
+export async function PUT(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
+export async function PATCH(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
+export async function DELETE(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
+export async function OPTIONS(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, ctx.params);
+}
