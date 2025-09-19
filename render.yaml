@@ -88,8 +88,7 @@ services:
       - key: PORT
         value: 9090
       - key: DATABASE_URL
-        fromDatabase:
-          name: iep-ally-postgres
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: OPENAI_API_KEY
