@@ -13,9 +13,7 @@ services:
       - key: NEXT_PUBLIC_API_BASE_URL
         value: /api/joslyn
       - key: JOSLYN_API_ORIGIN
-        fromService:
-          name: iep-ally-api
-          type: web
+        sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
 
@@ -70,13 +68,9 @@ services:
       - key: INTERNAL_API_KEY
         sync: false
       - key: PUBLIC_BASE_URL
-        fromService:
-          name: iep-ally-web
-          type: web
+        sync: false
       - key: CORS_ORIGINS
-        fromService:
-          name: iep-ally-web
-          type: web
+        sync: false
       - key: MODEL_RATES_JSON
         value: '{"gpt-5":{"in":0.000002,"out":0.000006},"gpt-5-mini":{"in":0.000001,"out":0.000003},"gpt-5-nano":{"in":0.0000002,"out":0.0000004},"default":{"in":0.000002,"out":0.000006}}'
       - key: STRIPE_SECRET_KEY
