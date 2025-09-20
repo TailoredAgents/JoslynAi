@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { encodeQjson } from "../lib/qjson";
+import { useSession } from "next-auth/react";
 import en from "../i18n/messages/en.json";
 import es from "../i18n/messages/es.json";
 import { useBootstrappedChild } from "../lib/use-child";
@@ -27,6 +28,8 @@ const featureHighlights = [
 ];
 
 export default function HomePage() {
+  const { data: session } = useSession();
+  const isAuthed = !!session?.user;
   const [q, setQ] = useState("How many OT minutes does my child receive each week?");
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,11 +71,11 @@ export default function HomePage() {
     }
   }
 
-  if (childLoading && !childReady) {
+  if (isAuthed && childLoading && !childReady) {
     return <div className="space-y-20 py-20 text-center text-sm text-slate-500">Loading child workspace...</div>;
   }
 
-  if (!childLoading && !childReady) {
+  if (isAuthed && !childLoading && !childReady) {
     return (
       <div className="space-y-20 py-20 text-center text-sm text-slate-500">
         <p className="font-semibold text-rose-500">Unable to load your child workspace.</p>
@@ -346,7 +349,6 @@ export default function HomePage() {
     </div>
   );
 }
-
 
 
 
