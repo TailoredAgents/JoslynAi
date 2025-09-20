@@ -195,7 +195,7 @@ export default function HomePage() {
         </aside>
       </section>
 
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section id="features" className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {featureHighlights.map((feat) => (
           <div key={feat.title} className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-2xl">{feat.icon}</div>
@@ -216,7 +216,7 @@ export default function HomePage() {
               <span className="mt-2 block font-semibold text-slate-800">? Priya, mom & advocate</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              &quot;Our team trusts the citations and loves that the letters sound human—because they are.&quot;<br />
+              &quot;Our team trusts the citations and loves that the letters sound humanï¿½because they are.&quot;<br />
               <span className="mt-2 block font-semibold text-slate-800">? Marisol, special education director</span>
             </div>
           </div>
@@ -256,6 +256,55 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section id="pricing" className="relative overflow-hidden rounded-3xl border border-brand-100 bg-white p-0 shadow-uplift">
+        <div className="grid gap-6 p-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-heading text-slate-900">Basic</h2>
+            <p className="mt-1 text-sm text-slate-500">Core tools to get started.</p>
+            <p className="mt-4 text-3xl font-heading text-slate-900">$9<span className="text-sm text-slate-500">/mo</span></p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li>Ask questions with citations</li>
+              <li>Brief and letter drafts</li>
+            </ul>
+            <div className="mt-6 flex gap-2">
+              <Link href="/onboarding" className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600">Create free workspace</Link>
+              <Link href="/api/auth/signin" className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 hover:border-brand-400 hover:text-brand-700">Log in</Link>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-brand-200 bg-white p-6 shadow-sm ring-1 ring-brand-100">
+            <div className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600">Most popular</div>
+            <h2 className="mt-2 text-lg font-heading text-slate-900">Pro</h2>
+            <p className="mt-1 text-sm text-slate-500">Everything in Basic, plus automation.</p>
+            <p className="mt-4 text-3xl font-heading text-slate-900">$29<span className="text-sm text-slate-500">/mo</span></p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li>Smart attachments</li>
+              <li>Send letters</li>
+              <li>Priority support</li>
+            </ul>
+            <div className="mt-6 flex gap-2">
+              <Link href="/onboarding" className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600">Start Pro trial</Link>
+              <Link href="/api/auth/signin" className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 hover:border-brand-400 hover:text-brand-700">Log in</Link>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-heading text-slate-900">Business</h2>
+            <p className="mt-1 text-sm text-slate-500">Teams and organizations.</p>
+            <p className="mt-4 text-3xl font-heading text-slate-900">$79<span className="text-sm text-slate-500">/mo</span></p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li>Admin insights</li>
+              <li>Advocacy & recommendations</li>
+              <li>IEP diff</li>
+            </ul>
+            <div className="mt-6 flex gap-2">
+              <Link href="/onboarding" className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600">Talk to sales</Link>
+              <Link href="/api/auth/signin" className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 hover:border-brand-400 hover:text-brand-700">Log in</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-gradient-to-r from-brand-500 via-brand-400 to-blush-400 p-10 text-white shadow-uplift">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Parents + advocates</p>
@@ -275,7 +324,6 @@ export default function HomePage() {
     </div>
   );
 }
-
 
 
 
