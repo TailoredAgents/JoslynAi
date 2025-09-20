@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma, runWithOrgContext } from "../lib/db.js";
 import { OpenAI } from "openai";
 import QRCode from "qrcode";
-import { orgIdFromRequest } from "../lib/child.js";
+import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
 import { fetchShareLinkByToken } from "../lib/share-links.js";
 import crypto from "node:crypto";
 
@@ -26,8 +26,11 @@ function verifyPassword(stored: string, attempt: string) {
 
 export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>("/children/:id/profile/save", async (req, reply) => {
-    const child_id = (req.params as any).id;
     const org_id = orgIdFromRequest(req as any);
+    const child_id = await resolveChildId((req.params as any).id, org_id);
+    if (!child_id) {
+      return reply.status(404).send({ error: "child_not_found" });
+    }
     const profile = (req.body as any) || {};
     await (prisma as any).child_profile.upsert({
       where: { child_id },
@@ -38,10 +41,13 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string } }>("/children/:id/profile/render", async (req, reply) => {
-    const child_id = (req.params as any).id;
-    const { lang1 = "en", lang2 = "es", password } = (req.body as any) || {};
     const org_id = orgIdFromRequest(req as any);
-    const row = await (prisma as any).child_profile.findFirst({ where: { child_id } });
+    const child_id = await resolveChildId((req.params as any).id, org_id);
+    if (!child_id) {
+      return reply.status(404).send({ error: "child_not_found" });
+    }
+    const { lang1 = "en", lang2 = "es", password } = (req.body as any) || {};
+    const row = await (prisma as any).child_profile.findFirst({ where: { child_id, org_id } });
     if (!row) return reply.status(400).send({ error: "profile not found" });
 
     const profile = row.profile_json || {};

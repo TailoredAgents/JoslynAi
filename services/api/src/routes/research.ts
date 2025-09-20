@@ -44,11 +44,12 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/documents/:id/explain", async (req, reply) => {
+    const orgId = orgIdFromRequest(req as any);
     const docId = (req.params as any).id;
     if (!docId) {
       return reply.status(400).send({ error: "missing_document" });
     }
-    const document = await (prisma as any).documents.findUnique({ where: { id: docId } });
+    const document = await (prisma as any).documents.findFirst({ where: { id: docId, org_id: orgId } });
     if (!document) {
       return reply.send({ status: "missing", summary: null });
     }
@@ -68,7 +69,7 @@ export default async function routes(app: FastifyInstance) {
     if (!docId) {
       return reply.status(400).send({ error: "missing_document" });
     }
-    const document = await (prisma as any).documents.findUnique({ where: { id: docId } });
+    const document = await (prisma as any).documents.findFirst({ where: { id: docId, org_id: orgId } });
     if (!document) {
       return reply.status(404).send({ error: "document_not_found" });
     }

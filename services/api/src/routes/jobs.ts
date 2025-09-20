@@ -37,6 +37,7 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.patch<{ Params: { id: string } }>("/jobs/:id", async (req, reply) => {
+    const orgId = orgIdFromRequest(req);
     const { status, error_text, payload, type } = (req.body as any);
     const updates: Record<string, any> = {};
     if (typeof status === "string" && status.trim()) {
@@ -54,8 +55,13 @@ export default async function routes(app: FastifyInstance) {
     if (!Object.keys(updates).length) {
       return reply.status(400).send({ error: "no_update_fields" });
     }
+    const id = (req.params as any).id;
+    const existing = await (prisma as any).job_runs.findFirst({ where: { id, org_id: orgId } });
+    if (!existing) {
+      return reply.status(404).send({ error: "not_found" });
+    }
     try {
-      const row = await (prisma as any).job_runs.update({ where: { id: (req.params as any).id }, data: updates });
+      const row = await (prisma as any).job_runs.update({ where: { id }, data: updates });
       return reply.send({ ok: true, job: row });
     } catch (err: any) {
       if (err?.code === "P2025") {
@@ -81,7 +87,8 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/jobs/:id", async (req, reply) => {
-    const row = await (prisma as any).job_runs.findUnique({ where: { id: (req.params as any).id } });
+    const orgId = orgIdFromRequest(req);
+    const row = await (prisma as any).job_runs.findFirst({ where: { id: (req.params as any).id, org_id: orgId } });
     if (!row) return reply.status(404).send({ error: "not_found" });
     return reply.send(row);
   });

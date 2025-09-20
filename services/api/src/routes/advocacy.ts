@@ -112,7 +112,7 @@ export default async function routes(app: FastifyInstance) {
     const orgId = orgIdFromRequest(req as any);
     const outlineId = (req.params as any).outlineId;
     const payload = (req.body as any) || {};
-    const outline = await (prisma as any).advocacy_outlines.findUnique({ where: { id: outlineId } });
+    const outline = await (prisma as any).advocacy_outlines.findFirst({ where: { id: outlineId, org_id: orgId } });
     if (!outline) {
       return reply.status(404).send({ error: "outline_not_found" });
     }
@@ -156,8 +156,17 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { outlineId: string }; Body: { status: string } }>("/advocacy/outlines/:outlineId/status", async (req, reply) => {
+    const orgId = orgIdFromRequest(req as any);
     const outlineId = (req.params as any).outlineId;
     const status = ((req.body as any)?.status || "draft").toLowerCase();
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function') {
+      await (req as any).requireRole(orgId, ["owner", "admin"]);
+    }
+    const existing = await (prisma as any).advocacy_outlines.findFirst({ where: { id: outlineId, org_id: orgId } });
+    if (!existing) {
+      return reply.status(404).send({ error: "outline_not_found" });
+    }
     await (prisma as any).advocacy_outlines.update({
       where: { id: outlineId },
       data: { status },

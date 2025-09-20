@@ -1,11 +1,13 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/db.js";
 import { createEvent } from "ics";
+import { orgIdFromRequest } from "../lib/child.js";
 
 export default async function routes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/deadlines/:id/ics", async (req, reply) => {
     const id = (req.params as any).id;
-    const dl = await (prisma as any).deadlines.findUnique({ where: { id } });
+    const orgId = orgIdFromRequest(req as any);
+    const dl = await (prisma as any).deadlines.findFirst({ where: { id, org_id: orgId } });
     if (!dl) return reply.status(404).send({ error: "not found" });
     const start = new Date(dl.due_date);
     const event = createEvent({

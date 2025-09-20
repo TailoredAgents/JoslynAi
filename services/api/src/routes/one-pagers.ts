@@ -103,13 +103,13 @@ export default async function routes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string }; Body: { document_id?: string; language_primary?: string; language_secondary?: string } }>("/one-pagers/:id/regenerate", async (req, reply) => {
+    const orgId = orgIdFromRequest(req as any);
     const onePagerId = (req.params as any).id;
     const body = (req.body as any) || {};
-    const record = await (prisma as any).one_pagers.findUnique({ where: { id: onePagerId } });
+    const record = await (prisma as any).one_pagers.findFirst({ where: { id: onePagerId, org_id: orgId } });
     if (!record) {
       return reply.status(404).send({ error: "one_pager_not_found" });
     }
-    const orgId = record.org_id;
     const childId = record.child_id;
     const language_primary = (body.language_primary || record.language_primary || "en").toLowerCase();
     const language_secondary = body.language_secondary ? String(body.language_secondary).toLowerCase() : (record.language_secondary || "es");
@@ -146,9 +146,10 @@ export default async function routes(app: FastifyInstance) {
     "/one-pagers/:id/publish",
     { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req, reply) => {
+    const orgId = orgIdFromRequest(req as any);
     const onePagerId = (req.params as any).id;
     const body = (req.body as any) || {};
-    const record = await (prisma as any).one_pagers.findUnique({ where: { id: onePagerId } });
+    const record = await (prisma as any).one_pagers.findFirst({ where: { id: onePagerId, org_id: orgId } });
     if (!record) {
       return reply.status(404).send({ error: "one_pager_not_found" });
     }
@@ -162,7 +163,7 @@ export default async function routes(app: FastifyInstance) {
 
     const shareLink = await (prisma as any).share_links.create({
       data: {
-        org_id: record.org_id,
+        org_id: orgId,
         resource_type: "one_pager",
         resource_subtype: record.audience,
         resource_id: record.id,
