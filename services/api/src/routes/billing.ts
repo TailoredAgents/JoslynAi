@@ -29,8 +29,14 @@ export default async function routes(app: FastifyInstance) {
 
   app.post("/billing/checkout", async (req, reply) => {
     if (!stripe) return reply.status(501).send({ error: "billing_disabled" });
-    const { org_id, price_id, plan, success_url, cancel_url } = (req.body as any);
-    if (!org_id) return reply.code(400).send({ error: "missing_org_id" });
+    const { price_id, plan, success_url, cancel_url } = (req.body as any);
+    const org_id = (req as any).orgId || (req as any).user?.org_id || null;
+    if (!org_id) return reply.code(401).send({ error: "org_context_unresolved" });
+    // Require owner/admin to initiate checkout
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function') {
+      await (req as any).requireRole(org_id, ["owner", "admin"]);
+    }
 
     const planKey = String(plan || "").toLowerCase();
     let priceId: string | undefined = PRICE_ENV_BY_PLAN[planKey];
@@ -72,6 +78,13 @@ export default async function routes(app: FastifyInstance) {
   app.post("/billing/portal", async (req, reply) => {
     if (!stripe) return reply.status(501).send({ error: "billing_disabled" });
     const { customer_id, return_url } = (req.body as any);
+    const org_id = (req as any).orgId || (req as any).user?.org_id || null;
+    if (!org_id) return reply.code(401).send({ error: "org_context_unresolved" });
+    // Require owner/admin to open portal
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function') {
+      await (req as any).requireRole(org_id, ["owner", "admin"]);
+    }
     const base = (process.env.PUBLIC_BASE_URL || "").trim();
     const allowOrigin = base ? new URL(base).origin : null;
     let ret = return_url;
@@ -85,8 +98,19 @@ export default async function routes(app: FastifyInstance) {
     } catch {
       if (allowOrigin) ret = new URL("/billing", allowOrigin).toString();
     }
-    const portal = await stripe.billingPortal.sessions.create({ customer: customer_id, return_url: ret || return_url });
-    return reply.send({ url: portal.url });
+    // Optional scoping: if entitlements table stores a stripe_customer_id, enforce it
+    try {
+      const ent = await (prisma as any).entitlements.findUnique({ where: { org_id }, select: { stripe_customer_id: true } }).catch(() => null);
+      if (ent && ent.stripe_customer_id && customer_id && ent.stripe_customer_id !== customer_id) {
+        return reply.code(403).send({ error: "customer_mismatch" });
+      }
+      if (ent && ent.stripe_customer_id) {
+        const portal = await stripe.billingPortal.sessions.create({ customer: ent.stripe_customer_id, return_url: ret || return_url });
+        return reply.send({ url: portal.url });
+      }
+    } catch {}
+    // If we cannot verify customer ownership, refuse to prevent cross-org access
+    return reply.code(400).send({ error: "customer_unknown" });
   });
 
   app.post("/webhooks/stripe", { config: { rawBody: true } }, async (req, reply) => {

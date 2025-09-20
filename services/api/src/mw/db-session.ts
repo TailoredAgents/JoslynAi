@@ -3,7 +3,7 @@ import { prisma, setOrgContext } from "../lib/db.js";
 import { FALLBACK_ORG_ID, isUuid } from "../lib/child.js";
 
 export default async function dbSession(app: FastifyInstance) {
-  app.addHook("onRequest", async (req) => {
+  app.addHook("onRequest", async (req, reply) => {
     // Derive org from authenticated user membership; do not trust headers
     let resolved: string | null = null;
     const allowHeaderAuth = process.env.ALLOW_HEADER_AUTH === "1" && process.env.NODE_ENV !== "production";
@@ -37,8 +37,13 @@ export default async function dbSession(app: FastifyInstance) {
       } catch {}
     }
 
-    // As a last resort in explicit dev mode only, use the demo org
+    // Fail closed in production when membership cannot be resolved
     if (!resolved) {
+      const isProd = process.env.NODE_ENV === "production";
+      if (isProd && !(internalOk && isInternalRoute)) {
+        return reply.code(401).send({ error: "org_context_unresolved" });
+      }
+      // In non-production (or internal route), allow fallback demo org to keep dev parity
       resolved = FALLBACK_ORG_ID;
     }
 

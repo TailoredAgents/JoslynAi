@@ -58,13 +58,25 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 
+  // Restrict seeding to admins/owners and trusted callers only
   app.post<{ Body: { phrases: Array<{ tag: string; contexts?: string[]; content: { phrase_en: string; phrase_es?: string; rationale?: string } }> } }>("/admin/safety/phrases/seed", async (req, reply) => {
+    const org_id = (req as any).orgId || (req as any).user?.org_id || null;
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function' && org_id) {
+      await (req as any).requireRole(org_id, ["owner", "admin"]);
+    } else {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
     const { phrases } = (req.body as any) || {};
     if (!Array.isArray(phrases) || !phrases.length) {
       return reply.status(400).send({ error: "phrases_required" });
     }
 
-    await enqueue({ kind: "seed_safety_phrases", org_id: null, phrases });
+    // Only allow org-scoped seeding unless explicitly trusted by internal key
+    const internalKey = (req.headers["x-internal-key"] as string | undefined) || undefined;
+    const trusted = internalKey && process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY;
+    const seedOrg = trusted ? null : org_id;
+    await enqueue({ kind: "seed_safety_phrases", org_id: seedOrg, phrases });
     return reply.send({ ok: true });
   });
 }
