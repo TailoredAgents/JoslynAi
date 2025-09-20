@@ -1,13 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { encodeQjson } from "../lib/qjson";
-import { useSession } from "next-auth/react";
-import en from "../i18n/messages/en.json";
-import es from "../i18n/messages/es.json";
-import { useBootstrappedChild } from "../lib/use-child";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 const featureHighlights = [
   {
@@ -28,65 +20,10 @@ const featureHighlights = [
 ];
 
 export default function HomePage() {
-  const { data: session } = useSession();
-  const isAuthed = !!session?.user;
-  const [q, setQ] = useState("How many OT minutes does my child receive each week?");
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [citations, setCitations] = useState<any[]>([]);
-  const [msgs, setMsgs] = useState<any>(en as any);
-
-  const { child, loading: childLoading, error: childError } = useBootstrappedChild();
-  const childId = child?.id ?? null;
-  const childReady = Boolean(childId);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const lang = (sp.get("lang") || "en").toLowerCase();
-      setMsgs(lang === "es" ? (es as any) : (en as any));
-    }
-  }, []);
-
-  const askLabel = useMemo(() => msgs?.["home.ask.title"] ?? "Ask Joslyn about your paperwork", [msgs]);
-
-  async function ask() {
-    if (!childReady || !childId) return;
-    setLoading(true);
-    setAnswer(null);
-    try {
-      const res = await fetch(`${API_BASE}/children/${childId}/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q })
-      });
-      const data = await res.json();
-      setAnswer(data?.answer ?? "I couldn't find that yet. Try another question?");
-      setCitations(data?.citations ?? []);
-    } catch (e) {
-      setAnswer("We hit a bump. Please try again in a moment.");
-      setCitations([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (isAuthed && childLoading && !childReady) {
-    return <div className="space-y-20 py-20 text-center text-sm text-slate-500">Loading child workspace...</div>;
-  }
-
-  if (isAuthed && !childLoading && !childReady) {
-    return (
-      <div className="space-y-20 py-20 text-center text-sm text-slate-500">
-        <p className="font-semibold text-rose-500">Unable to load your child workspace.</p>
-        {childError ? <p className="text-xs text-rose-400">{childError}</p> : null}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-20">
-      <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="space-y-6">
         <div className="space-y-6">
           <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-700">
             Trusted by advocates, parents, and educators
@@ -135,67 +72,6 @@ export default function HomePage() {
             </div>
           </dl>
         </div>
-
-        <aside className="relative rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl shadow-brand-500/10 ring-1 ring-slate-100">
-          <div className="absolute -top-7 left-6 inline-flex items-center rounded-full border border-brand-200 bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-brand-600 shadow-sm">
-            Live preview
-          </div>
-          <h2 className="text-lg font-heading text-slate-900">{askLabel}</h2>
-          <p className="mt-1 text-sm text-slate-500">Not legal or medical advice?just clarity, fast.</p>
-          <div className="mt-4 flex gap-2">
-            <input
-              className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-inner focus:border-brand-400 focus:outline-none focus:ring focus:ring-brand-200/60"
-              placeholder="Try: Where are speech minutes listed?"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <button
-              className="inline-flex items-center rounded-2xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600"
-              onClick={ask}
-              disabled={loading || !childReady}
-            >
-              {loading ? "Thinking..." : "Ask"}
-            </button>
-          </div>
-          {answer && (
-            <div className="mt-6 space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">{answer}</p>
-              </div>
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Supporting snippets</p>
-                {citations.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">Upload a sample IEP to see highlights here.</p>
-                )}
-                {citations.length > 0 && (() => {
-                  const byDoc = new Map<string, { doc_name: string; cites: { page: number; quote: string }[] }>();
-                  for (const c of citations || []) {
-                    const id = c.document_id as string;
-                    const entry = byDoc.get(id) ?? { doc_name: c.doc_name || "Document", cites: [] as { page: number; quote: string }[] };
-                    if (!entry.cites.some((x) => x.page === Number(c.page) && x.quote === (c.quote || ""))) {
-                      entry.cites.push({ page: Number(c.page), quote: c.quote || "" });
-                    }
-                    byDoc.set(id, entry);
-                  }
-                  return [...byDoc.entries()].slice(0, 1).map(([docId, { doc_name, cites }]) => {
-                    const qjson = encodeQjson(cites, 12);
-                    return (
-                      <div key={docId} className="space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-500">
-                        <div className="flex items-center justify-between text-slate-600">
-                          <span className="font-semibold text-slate-700">{doc_name}</span>
-                          <Link className="text-brand-500 hover:text-brand-600" href={`/documents/${docId}/view?qjson=${encodeURIComponent(qjson)}`} target="_blank">
-                            View highlights ?
-                          </Link>
-                        </div>
-                        <p>p.{cites[0]?.page}: {cites[0]?.quote.slice(0, 100)}{cites[0]?.quote.length > 100 ? "..." : ""}</p>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-          )}
-        </aside>
       </section>
 
       <section id="faq" className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
@@ -338,7 +214,6 @@ export default function HomePage() {
     </div>
   );
 }
-
 
 
 
