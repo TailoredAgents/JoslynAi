@@ -42,7 +42,12 @@ export default function AdminDeadlinesPage() {
       if (to) params.set("to", to);
       if (selectedKind !== "all") params.set("kind", selectedKind);
       const res = await fetch(`${API_BASE}/admin/deadlines?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Admin access requires owner/admin role");
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       setRows(Array.isArray(data) ? data : []);
     } catch (err: any) {

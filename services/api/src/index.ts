@@ -47,6 +47,7 @@ import jobsRoutes from "./routes/jobs.js";
 import feedbackRoutes from "./routes/feedback.js";
 import consentRoutes from "./routes/consent.js";
 import realtimeRoutes from "./realtime/index.js";
+import whoamiRoutes from "./routes/whoami.js";
 
 const app = Fastify({
   logger: {
@@ -146,6 +147,7 @@ await app.register(jobsRoutes);
 await app.register(realtimeRoutes);
 await app.register(feedbackRoutes);
 await app.register(consentRoutes);
+await app.register(whoamiRoutes);
 
 app.setErrorHandler((err: any, req, reply) => {
   if (err?.statusCode === 400 && /image data/i.test(String(err?.message))) {

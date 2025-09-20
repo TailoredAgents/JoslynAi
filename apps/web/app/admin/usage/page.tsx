@@ -36,7 +36,13 @@ export default function AdminUsagePage() {
     setLoading(true);
     setError(null);
     fetch(`${base}/admin/usage?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+      .then(async (r) => {
+        if (!r.ok) {
+          if (r.status === 401 || r.status === 403) throw new Error("Admin access requires owner/admin role");
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
       .then((payload) => {
         setData(payload);
         setLoading(false);

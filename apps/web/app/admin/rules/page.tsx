@@ -28,7 +28,12 @@ export default function AdminRulesPage() {
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/admin/rules`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Admin access requires owner/admin role");
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       setRules(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -57,7 +62,12 @@ export default function AdminRulesPage() {
           active: !!rule.active
         })
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Admin access requires owner/admin role");
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       await load();
     } catch (err: any) {
       setError(String(err?.message || err));
