@@ -111,3 +111,5 @@ export async function OPTIONS(request: Request, context: any) {
   const params = (await (context?.params)) || { path: [] };
   return proxy(request, params);
 }
+// Ensure Node.js runtime for compatibility with NextAuth and streaming bodies
+export const runtime = "nodejs";
