@@ -6,8 +6,8 @@ import Link from "next/link";
 
 export default function SignInPage() {
   const sp = useSearchParams();
-  const callbackUrl = sp.get("callbackUrl") || "/copilot";
-  const next = typeof callbackUrl === "string" && callbackUrl.startsWith("/") ? callbackUrl : "/copilot";
+  const cb = sp?.get("callbackUrl") || "/copilot";
+  const next = cb.startsWith("/") ? cb : "/copilot";
 
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -90,4 +90,3 @@ export default function SignInPage() {
     </div>
   );
 }
-
