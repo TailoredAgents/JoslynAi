@@ -10,6 +10,8 @@ services:
         value: /api/joslyn
       - key: JOSLYN_API_ORIGIN
         sync: false
+      - key: API_JWT_SECRET
+        sync: false
       - key: INTERNAL_API_KEY
         sync: false
       - key: NEXTAUTH_URL

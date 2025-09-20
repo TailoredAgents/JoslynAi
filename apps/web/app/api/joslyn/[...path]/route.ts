@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/auth-options";
+import crypto from "node:crypto";
 
 const API_ORIGIN = process.env.JOSLYN_API_ORIGIN || "http://localhost:8080";
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "";
+// Secret used to mint API-compatible JWTs (must match API JWT_SECRET)
+const API_JWT_SECRET = process.env.API_JWT_SECRET || process.env.JWT_SECRET || "";
 
 function sanitizeBase(origin: string) {
   try {
@@ -43,6 +45,11 @@ async function proxy(request: Request, params: { path: string[] }) {
   const base = sanitizeBase(API_ORIGIN);
   const pathSegments = Array.isArray(params?.path) ? params.path : [];
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
+  // Block SSRF: do not allow absolute/external targets
+  const lower = targetPath.toLowerCase();
+  if (!targetPath || lower.startsWith("http://") || lower.startsWith("https://") || lower.includes("://")) {
+    return NextResponse.json({ error: "invalid_path" }, { status: 400 });
+  }
   const targetUrl = new URL(targetPath, base);
   try {
     const inUrl = new URL(request.url);
@@ -50,6 +57,10 @@ async function proxy(request: Request, params: { path: string[] }) {
   } catch {}
 
   const session = await getServerSession(authOptions);
+  // Require a valid session for proxying user requests
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
   const cookieStore = await cookies();
   const identity = buildIdentity(session, cookieStore);
 
@@ -62,11 +73,27 @@ async function proxy(request: Request, params: { path: string[] }) {
     headers.set(key, value);
   });
 
-  headers.set("x-org-id", identity.orgId);
-  headers.set("x-user-id", identity.userId);
-  headers.set("x-user-email", identity.email);
-  headers.set("x-user-role", identity.role);
-  if (INTERNAL_KEY) headers.set("x-internal-key", INTERNAL_KEY);
+  // Build a short-lived JWT for the API (5 minutes)
+  if (!API_JWT_SECRET) {
+    return NextResponse.json({ error: "api_jwt_secret_missing" }, { status: 500 });
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "HS256", typ: "JWT" };
+  const payload = {
+    iss: "joslyn-web",
+    aud: "joslyn-api",
+    iat: now,
+    exp: now + 300,
+    sub: identity.userId,
+    email: identity.email,
+    role: identity.role,
+    org_id: identity.orgId,
+  } as const;
+  const segH = Buffer.from(JSON.stringify(header)).toString("base64").replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const segP = Buffer.from(JSON.stringify(payload)).toString("base64").replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const data = `${segH}.${segP}`;
+  const sig = crypto.createHmac("sha256", API_JWT_SECRET).update(data).digest("base64").replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  headers.set("authorization", `Bearer ${data}.${sig}`);
 
   const body = request.method === "GET" || request.method === "HEAD" ? undefined : (request as any).body ?? undefined;
 

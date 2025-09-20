@@ -11,8 +11,10 @@ export default async function auth(app: FastifyInstance) {
     const allowHeaderAuth = process.env.ALLOW_HEADER_AUTH === "1" && process.env.NODE_ENV !== "production";
     const internalKey = (req.headers["x-internal-key"] as string | undefined) || undefined;
     const internalOk = internalKey && process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY;
+    const rawUrl = String(((req as any).routerPath || (req as any).raw?.url || req.url || ""));
+    const isInternalRoute = rawUrl.startsWith("/internal/");
 
-    if (internalOk) {
+    if (internalOk && isInternalRoute) {
       // Allow trusted internal callers (Web/Worker) to set identity via headers
       const uid = (req.headers["x-user-id"] as string) || "internal";
       const email = (req.headers["x-user-email"] as string) || "internal@system";
