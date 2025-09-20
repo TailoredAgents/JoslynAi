@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
 const navigation = [
+  { href: "/features", label: "Features" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/copilot", label: "Copilot" },
   { href: "/about-my-child", label: "Profile" },
   { href: "/eligibility", label: "Eligibility" },
