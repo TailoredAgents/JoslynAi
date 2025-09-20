@@ -14,14 +14,9 @@ const marketingNav = [
 ];
 const appNav = [
   { href: "/copilot", label: "Copilot" },
-  { href: "/documents", label: "Documents" },
-  { href: "/letters", label: "Letters" },
-  { href: "/claims", label: "Claims" },
   { href: "/goals", label: "Goals" },
-  { href: "/iep", label: "IEP" },
   { href: "/about-my-child", label: "Profile" },
   { href: "/eligibility", label: "Eligibility" },
-  { href: "/meetings", label: "Meetings" },
   { href: "/recommendations", label: "Recommendations" },
   { href: "/research", label: "Research" },
   { href: "/one-pagers", label: "One-pagers" },
