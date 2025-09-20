@@ -7,13 +7,23 @@ import { usePathname } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
 
-const navigation = [
+const marketingNav = [
   { href: "/features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
+];
+const appNav = [
   { href: "/copilot", label: "Copilot" },
+  { href: "/documents", label: "Documents" },
+  { href: "/letters", label: "Letters" },
+  { href: "/claims", label: "Claims" },
+  { href: "/goals", label: "Goals" },
+  { href: "/iep", label: "IEP" },
   { href: "/about-my-child", label: "Profile" },
   { href: "/eligibility", label: "Eligibility" },
-  { href: "/onboarding", label: "Onboarding" }
+  { href: "/meetings", label: "Meetings" },
+  { href: "/recommendations", label: "Recommendations" },
+  { href: "/research", label: "Research" },
+  { href: "/one-pagers", label: "One-pagers" },
 ];
 
 export default function HeaderNav() {
@@ -37,7 +47,11 @@ export default function HeaderNav() {
     setAdminOpen(false);
   }, [pathname]);
 
-  const navItems = useMemo(() => (showAdmin ? [...navigation, { href: "/admin/deadlines", label: "Admin" }] : navigation), [showAdmin]);
+  const loggedIn = !!session?.user;
+  const navItems = useMemo(() => {
+    if (!loggedIn) return marketingNav;
+    return showAdmin ? [...appNav, { href: "/admin/deadlines", label: "Admin" }] : appNav;
+  }, [loggedIn, showAdmin]);
 
   async function submitFeedback() {
     try {
@@ -75,7 +89,7 @@ export default function HeaderNav() {
         </Link>
 
         <div className="hidden items-center gap-6 text-sm sm:flex">
-          {navigation.map(({ href, label }) => (
+          {navItems.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
