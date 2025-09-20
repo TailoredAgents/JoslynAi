@@ -1,6 +1,9 @@
 FROM node:22-slim AS build
 WORKDIR /app
 RUN corepack enable
+# Ensure build-time default for public API base so client bundles target the server proxy
+ARG NEXT_PUBLIC_API_BASE_URL=/api/joslyn
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web ./apps/web
 COPY packages/ui ./packages/ui
