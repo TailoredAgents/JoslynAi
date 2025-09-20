@@ -24,15 +24,30 @@ export function useBootstrappedChild() {
         credentials: "include",
         headers: { Accept: "application/json" },
       });
+      const contentType = res.headers.get("content-type") || "";
+      const rawText = await res.text().catch(() => "");
+
       if (!res.ok) {
-        let detail = "";
-        try { detail = await res.text(); } catch {}
-        throw new Error(`Bootstrap failed (${res.status})${detail ? `: ${detail.slice(0,180)}` : ""}`);
+        const preview = rawText ? `: ${rawText.slice(0, 200)}` : "";
+        throw new Error(`Bootstrap failed (${res.status})${preview}`);
       }
-      const data = await res.json().catch(() => ({}));
-      // Accept { child } or a direct child object for resilience
-      const parsed: any = (data && typeof data === "object") ? (data.child || data) : null;
-      setChild(parsed && typeof parsed === "object" && parsed.id ? parsed : null);
+
+      let data: any = null;
+      try {
+        data = contentType.includes("application/json") ? JSON.parse(rawText) : JSON.parse(rawText);
+      } catch {
+        const preview = rawText ? rawText.slice(0, 200) : "<empty body>";
+        throw new Error(`Bootstrap returned non-JSON. Preview: ${preview}`);
+      }
+
+      // Accept { child } or a direct child object
+      const parsed: any = data && typeof data === "object" ? (data.child || data) : null;
+      if (!parsed || typeof parsed !== "object" || !parsed.id) {
+        const preview = rawText ? rawText.slice(0, 200) : JSON.stringify(data).slice(0, 200);
+        throw new Error(`Bootstrap missing child id. Preview: ${preview}`);
+      }
+
+      setChild(parsed as BootstrappedChild);
       setError(null);
     } catch (err: any) {
       setError(err?.message || "Unable to load child context");
