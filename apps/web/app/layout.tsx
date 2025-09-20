@@ -21,11 +21,13 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "Joslyn AI",
     type: "website",
+    images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDesc,
+    images: ["/twitter-image"],
   },
 };
 
