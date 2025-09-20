@@ -18,12 +18,21 @@ export function useBootstrappedChild() {
   const fetchChild = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/children/bootstrap`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/children/bootstrap`, {
+        cache: "no-store",
+        // Ensure cookies are sent for session-aware server routes
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
       if (!res.ok) {
-        throw new Error(`Bootstrap failed with status ${res.status}`);
+        let detail = "";
+        try { detail = await res.text(); } catch {}
+        throw new Error(`Bootstrap failed (${res.status})${detail ? `: ${detail.slice(0,180)}` : ""}`);
       }
-      const data = await res.json();
-      setChild(data?.child ?? null);
+      const data = await res.json().catch(() => ({}));
+      // Accept { child } or a direct child object for resilience
+      const parsed: any = (data && typeof data === "object") ? (data.child || data) : null;
+      setChild(parsed && typeof parsed === "object" && parsed.id ? parsed : null);
       setError(null);
     } catch (err: any) {
       setError(err?.message || "Unable to load child context");
