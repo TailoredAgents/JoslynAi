@@ -6,9 +6,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY services/api ./services/api
 COPY packages/core ./packages/core
 COPY packages/db ./packages/db
-RUN pnpm install --frozen-lockfile
-# Build workspace packages so @joslyn-ai/core is compiled before the API
-RUN pnpm -r build
+RUN pnpm install
+# Build only required workspace packages so core/db are compiled before the API
+RUN pnpm --filter @joslyn-ai/core --filter @joslyn-ai/db --filter @joslyn-ai/api -r build
 COPY services/api/docker-entrypoint.sh ./services/api/docker-entrypoint.sh
 RUN chmod +x ./services/api/docker-entrypoint.sh
 EXPOSE 8080

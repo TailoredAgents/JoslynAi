@@ -13,7 +13,7 @@ function sanitizeBase(origin: string) {
   }
 }
 
-type CookieStore = Awaited<ReturnType<typeof cookies>>;
+type CookieStore = ReturnType<typeof cookies>;
 
 function buildIdentity(session: any, cookieStore: CookieStore) {
   const cookieOrg = cookieStore.get("joslyn-org")?.value || null;
@@ -49,7 +49,7 @@ async function proxy(request: Request, params: { path: string[] }) {
   } catch {}
 
   const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const identity = buildIdentity(session, cookieStore);
 
   const headers = new Headers();
@@ -66,12 +66,14 @@ async function proxy(request: Request, params: { path: string[] }) {
   headers.set("x-user-email", identity.email);
   headers.set("x-user-role", identity.role);
 
-  const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+  const body = request.method === "GET" || request.method === "HEAD" ? undefined : (request as any).body ?? undefined;
 
   const upstream = await fetch(targetUrl, {
     method: request.method,
     headers,
     body,
+    // Needed when streaming a Request.body in Node.js runtimes
+    ...(body ? ({ duplex: "half" } as any) : {}),
     redirect: "manual",
   });
 
@@ -83,21 +85,21 @@ async function proxy(request: Request, params: { path: string[] }) {
   });
 }
 
-export async function GET(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function GET(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }
-export async function POST(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function POST(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }
-export async function PUT(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function PUT(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }
-export async function PATCH(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function PATCH(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }
-export async function DELETE(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function DELETE(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }
-export async function OPTIONS(request: Request, ctx: { params: { path: string[] } }) {
-  return proxy(request, ctx.params);
+export async function OPTIONS(request: Request, context: any) {
+  return proxy(request, (context?.params as any) || { path: [] });
 }

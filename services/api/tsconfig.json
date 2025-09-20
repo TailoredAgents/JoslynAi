@@ -12,8 +12,8 @@
     "noEmitOnError": true,
     "baseUrl": ".",
     "paths": {
-      "@joslyn-ai/core": ["../packages/core/src/index.ts"],
-      "@joslyn-ai/core/*": ["../packages/core/src/*"]
+      "@joslyn-ai/core": ["../../packages/core/src/index.ts"],
+      "@joslyn-ai/core/*": ["../../packages/core/src/*"]
     }
   },
   "include": ["src/**/*"]

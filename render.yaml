@@ -10,8 +10,12 @@ services:
         value: /api/joslyn
       - key: JOSLYN_API_ORIGIN
         sync: false
+      - key: NEXTAUTH_URL
+        sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
+      - key: NEXT_PUBLIC_ADMIN_API_KEY
+        sync: false
 
   - type: web
     name: iep-ally-api
@@ -22,6 +26,8 @@ services:
         value: production
       - key: PORT
         value: 8080
+      - key: RUN_MIGRATIONS
+        value: "false"
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
@@ -70,6 +76,10 @@ services:
         sync: false
       - key: PRICE_PRO
         sync: false
+      - key: PRICE_BUSINESS
+        sync: false
+      - key: STRIPE_TRIAL_DAYS
+        value: "0"
 
   - type: web
     name: iep-ally-worker
