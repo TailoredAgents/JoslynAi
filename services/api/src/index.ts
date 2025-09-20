@@ -94,8 +94,10 @@ await app.register(jwt, { secret: jwtSecret });
 await app.register(rateLimit, {
   max: 300,
   timeWindow: "1 minute",
-  keyGenerator: (req: any) =>
-    (req.headers["x-org-id"] as string) || (req.user?.org_id as string) || (req as any).orgId || req.ip,
+  keyGenerator: (req: any) => {
+    const uid = (req.user && (req.user as any).id) ? String((req.user as any).id) : null;
+    return uid ? `uid:${uid}` : `ip:${req.ip}`;
+  },
 });
 await app.register(redact);
 await app.register(auth);

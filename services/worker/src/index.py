@@ -42,6 +42,9 @@ def _patch_job(job_id: str | None, stage: str, status: str, org_id: str | None =
         "x-user-email": "worker@system",
         "x-user-role": "system",
     }
+    internal = os.getenv("INTERNAL_API_KEY")
+    if internal:
+        headers["x-internal-key"] = internal
     payload = {"type": stage, "status": status}
     if error_text:
         payload["error_text"] = error_text

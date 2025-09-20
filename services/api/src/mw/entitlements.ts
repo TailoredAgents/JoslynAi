@@ -1,7 +1,9 @@
 import { prisma } from "../lib/db.js";
+import { FALLBACK_ORG_ID, isUuid } from "../lib/child.js";
 
 export async function requireEntitlement(req: any, reply: any, feature: string): Promise<boolean> {
-  const orgId = (req.orgId || req.headers["x-org-id"] || "demo-org") as string;
+  const claimed = (req as any).orgId || (req as any).user?.org_id || null;
+  const orgId = isUuid(String(claimed || "")) ? String(claimed) : FALLBACK_ORG_ID;
   try {
     const ent = await (prisma as any).entitlements.findUnique({ where: { org_id: orgId } });
     const features = ent?.features_json || {};

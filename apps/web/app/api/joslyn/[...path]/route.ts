@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/auth-options";
 
 const API_ORIGIN = process.env.JOSLYN_API_ORIGIN || "http://localhost:8080";
+const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "";
 
 function sanitizeBase(origin: string) {
   try {
@@ -65,6 +66,7 @@ async function proxy(request: Request, params: { path: string[] }) {
   headers.set("x-user-id", identity.userId);
   headers.set("x-user-email", identity.email);
   headers.set("x-user-role", identity.role);
+  if (INTERNAL_KEY) headers.set("x-internal-key", INTERNAL_KEY);
 
   const body = request.method === "GET" || request.method === "HEAD" ? undefined : (request as any).body ?? undefined;
 

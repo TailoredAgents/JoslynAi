@@ -11,7 +11,7 @@ export default async function routes(app: FastifyInstance) {
       return;
     }
     const { child_id, denial_reason, limit = 5 } = (req.body as any);
-    const orgId = (req as any).orgId || (req as any).headers?.['x-org-id'] || (req as any).user?.org_id;
+    const orgId = (req as any).orgId || (req as any).user?.org_id;
     const rules = (SMART_ATTACHMENT_MAP as any)[denial_reason] || [];
     if (!rules.length) return reply.send({ suggestions: [] });
 

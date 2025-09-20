@@ -27,6 +27,7 @@ function baseHeaders(ctx: ToolContext): Record<string, string> {
   maybeSet("x-user-id", ctx.userId);
   maybeSet("x-user-email", ctx.userEmail);
   maybeSet("x-user-role", ctx.userRole);
+  maybeSet("x-internal-key", process.env.INTERNAL_API_KEY || undefined);
 
   return headers;
 }

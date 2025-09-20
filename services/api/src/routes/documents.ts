@@ -1,6 +1,10 @@
 import { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { prisma } from "../lib/db.js";
 import { putObject } from "../lib/s3.js";
 import { enqueue } from "../lib/redis.js";
@@ -15,7 +19,14 @@ function guessDocType(filename: string) {
 }
 
 export default async function routes(fastify: FastifyInstance) {
-  await fastify.register(multipart);
+  const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB || 32);
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: MAX_UPLOAD_MB * 1024 * 1024,
+      files: 1,
+      fields: 20,
+    },
+  });
 
   fastify.post<{ Params: { id: string } }>("/children/:id/documents", async (req, reply) => {
     const data = await (req as any).file?.();
@@ -27,14 +38,21 @@ export default async function routes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: "child_not_found" });
     }
 
-    const chunks: Buffer[] = [];
-    for await (const ch of (data as any).file) chunks.push(ch as Buffer);
-    const buf = Buffer.concat(chunks);
+    // Stream to temp file to avoid buffering entire upload in memory
+    const ext = path.extname(data.filename || "");
+    const tmp = path.join(os.tmpdir(), `upload_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+    await pipeline((data as any).file, fs.createWriteStream(tmp));
 
-    const sha256 = crypto.createHash("sha256").update(buf).digest("hex");
+    // Compute sha256 by streaming temp file
+    const sha256 = await new Promise<string>((resolve, reject) => {
+      const h = crypto.createHash("sha256");
+      const rs = fs.createReadStream(tmp);
+      rs.on("data", (d) => h.update(d as Buffer));
+      rs.on("error", reject);
+      rs.on("end", () => resolve(h.digest("hex")));
+    });
+
     const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
-
-    await putObject(key, buf, (data as any).mimetype);
 
     // Prefer using Prisma model if available; fallback to raw insert
     let documentId: string | undefined;
@@ -87,6 +105,10 @@ export default async function routes(fastify: FastifyInstance) {
 
     if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
 
+    // Upload to object storage by streaming from temp file
+    await putObject(key, fs.createReadStream(tmp), (data as any).mimetype);
+    try { fs.unlinkSync(tmp); } catch {}
+
     // Create job run for tracking
     let jobId: string | null = null;
     try {
@@ -120,4 +142,3 @@ export default async function routes(fastify: FastifyInstance) {
     return reply.send(spans);
   });
 }
-

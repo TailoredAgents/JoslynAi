@@ -12,14 +12,16 @@ export function isUuid(value: string | null | undefined): boolean {
 }
 
 export function orgIdFromRequest(req: any): string {
-  const candidate = (
-    (req?.orgId as string) ||
-    (req?.headers?.["x-org-id"] as string) ||
-    (req?.user?.org_id as string) ||
-    ""
-  ).trim();
+  // Prefer org set by db-session hook
+  const fromHook = (req?.orgId && String(req.orgId).trim()) || "";
+  if (isUuid(fromHook)) return fromHook;
 
-  return isUuid(candidate) ? candidate : FALLBACK_ORG_ID;
+  // Fallback to org_id claim on the authenticated user (if present & valid)
+  const fromUser = (req?.user?.org_id && String(req.user.org_id).trim()) || "";
+  if (isUuid(fromUser)) return fromUser;
+
+  // Do NOT trust client headers here. Only allow demo fallback.
+  return FALLBACK_ORG_ID;
 }
 
 export function slugifyCandidate(input: string | null | undefined): string {
