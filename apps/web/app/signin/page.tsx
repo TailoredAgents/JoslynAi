@@ -1,13 +1,17 @@
 "use client";
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
 export default function SignInPage() {
-  const sp = useSearchParams();
-  const cb = sp?.get("callbackUrl") || "/copilot";
-  const next = cb.startsWith("/") ? cb : "/copilot";
+  const [next, setNext] = useState<string>("/copilot");
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cb = params.get("callbackUrl");
+      if (cb && cb.startsWith("/")) setNext(cb);
+    } catch {}
+  }, []);
 
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
