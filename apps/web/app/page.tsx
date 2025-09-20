@@ -195,6 +195,28 @@ export default function HomePage() {
         </aside>
       </section>
 
+      <section id="faq" className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+        <h2 className="text-2xl font-heading text-slate-900">Frequently asked questions</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <details className="rounded-2xl border border-slate-200 bg-white p-4 open:shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800">Is this legal or medical advice?</summary>
+            <p className="mt-2 text-sm text-slate-600">No. Joslyn AI offers guidance and organization, not legal or medical advice. Always consult your professional team for decisions.</p>
+          </details>
+          <details className="rounded-2xl border border-slate-200 bg-white p-4 open:shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800">Will my data be secure?</summary>
+            <p className="mt-2 text-sm text-slate-600">Yes. Your workspace is tenant‑isolated, and we enforce role‑aware access. You control who joins and what they can see.</p>
+          </details>
+          <details className="rounded-2xl border border-slate-200 bg-white p-4 open:shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800">Can I invite my team?</summary>
+            <p className="mt-2 text-sm text-slate-600">Absolutely. Invite advocates, teachers, and specialists to collaborate with bilingual summaries and shared timelines.</p>
+          </details>
+          <details className="rounded-2xl border border-slate-200 bg-white p-4 open:shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800">How do upgrades work?</summary>
+            <p className="mt-2 text-sm text-slate-600">Start free, then upgrade from your workspace billing page whenever you need more automation or admin features.</p>
+          </details>
+        </div>
+      </section>
+
       <section id="features" className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {featureHighlights.map((feat) => (
           <div key={feat.title} className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
@@ -324,7 +346,6 @@ export default function HomePage() {
     </div>
   );
 }
-
 
 
 

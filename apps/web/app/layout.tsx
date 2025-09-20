@@ -7,10 +7,26 @@ import { Nunito, Work_Sans } from "next/font/google";
 const headingFont = Nunito({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-heading" });
 const bodyFont = Work_Sans({ subsets: ["latin"], variable: "--font-body" });
 
+const siteTitle = "Joslyn AI — IEP/504 Copilot";
+const siteDesc = "A compassionate AI co‑pilot for IEP/504 planning and support. Turn dense documents into guidance with citations, timelines, and parent‑friendly letters.";
+
 export const metadata: Metadata = {
-  title: "Joslyn AI",
-  description: "A compassionate AI co-pilot for IEP/504 planning and support",
-  manifest: "/manifest.json"
+  title: siteTitle,
+  description: siteDesc,
+  manifest: "/manifest.json",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
+  openGraph: {
+    title: siteTitle,
+    description: siteDesc,
+    url: "/",
+    siteName: "Joslyn AI",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDesc,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
