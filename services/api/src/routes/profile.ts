@@ -66,7 +66,12 @@ export default async function routes(app: FastifyInstance) {
 
     const PDFDocument = (await import("pdfkit" as any)).default;
     const fs = await import("node:fs");
-    const tmp = (process.platform === 'win32' ? process.env.TEMP || 'C:/temp' : '/tmp') + `/${child_id}-profile.pdf`;
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const tmpDir = await new Promise<string>((resolve, reject) =>
+      fs.mkdtemp(path.join(os.tmpdir(), `profile_${child_id}_`), (err, folder) => (err ? reject(err) : resolve(folder)))
+    );
+    const tmp = path.join(tmpDir, `${child_id}-profile.pdf`);
     const doc = new (PDFDocument as any)({ margin: 50 });
     const stream = (doc as any).pipe(fs.createWriteStream(tmp));
     (doc as any).fontSize(16).text("About My Child", { align: "center" });
@@ -83,6 +88,8 @@ export default async function routes(app: FastifyInstance) {
     const pdfKey = `org/${org_id}/profiles/${child_id}.pdf`;
     const buf = fs.readFileSync(tmp);
     await putObject(pdfKey, buf, "application/pdf");
+    try { fs.unlinkSync(tmp); } catch {}
+    try { fs.rmdirSync(tmpDir); } catch {}
 
     const token = crypto.randomBytes(24).toString("base64url");
     const password_hash = password ? hashPassword(password) : undefined;
@@ -99,7 +106,8 @@ export default async function routes(app: FastifyInstance) {
           version: "profile_v1",
           child_id,
           languages: { primary: lang1, secondary: lang2 }
-        }
+        },
+        expires_at: new Date(Date.now() + 30 * 86400_000)
       }
     });
     const base = process.env.PUBLIC_BASE_URL || "http://localhost:8080";

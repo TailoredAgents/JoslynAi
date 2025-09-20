@@ -43,11 +43,26 @@ export default async function routes(app: FastifyInstance) {
     if (!priceId) return reply.code(400).send({ error: "price_not_configured" });
 
     const trialDays = Number(process.env.STRIPE_TRIAL_DAYS || "0");
+    // Build/validate return URLs to prevent open redirects
+    const base = (process.env.PUBLIC_BASE_URL || "").trim();
+    const allowOrigin = base ? new URL(base).origin : null;
+    function pickUrl(candidate: string | undefined, fallbackPath: string) {
+      try {
+        if (candidate) {
+          const u = new URL(candidate);
+          if (!allowOrigin || u.origin === allowOrigin) return u.toString();
+        }
+      } catch {}
+      return allowOrigin ? new URL(fallbackPath, allowOrigin).toString() : candidate || fallbackPath;
+    }
+    const successUrl = pickUrl(success_url, "/billing/success");
+    const cancelUrl = pickUrl(cancel_url, "/billing/cancel");
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url,
-      cancel_url,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: { org_id, plan: planKey || undefined },
       subscription_data: trialDays > 0 ? { trial_period_days: trialDays, metadata: { org_id } } : { metadata: { org_id } },
     });
@@ -57,7 +72,20 @@ export default async function routes(app: FastifyInstance) {
   app.post("/billing/portal", async (req, reply) => {
     if (!stripe) return reply.status(501).send({ error: "billing_disabled" });
     const { customer_id, return_url } = (req.body as any);
-    const portal = await stripe.billingPortal.sessions.create({ customer: customer_id, return_url });
+    const base = (process.env.PUBLIC_BASE_URL || "").trim();
+    const allowOrigin = base ? new URL(base).origin : null;
+    let ret = return_url;
+    try {
+      if (ret) {
+        const u = new URL(ret);
+        if (allowOrigin && u.origin !== allowOrigin) ret = new URL("/billing", allowOrigin).toString();
+      } else if (allowOrigin) {
+        ret = new URL("/billing", allowOrigin).toString();
+      }
+    } catch {
+      if (allowOrigin) ret = new URL("/billing", allowOrigin).toString();
+    }
+    const portal = await stripe.billingPortal.sessions.create({ customer: customer_id, return_url: ret || return_url });
     return reply.send({ url: portal.url });
   });
 

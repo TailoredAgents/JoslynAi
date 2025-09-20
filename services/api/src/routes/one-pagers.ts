@@ -142,7 +142,10 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ one_pager: serializeOnePager(updated) });
   });
 
-  app.post<{ Params: { id: string }; Body: { password?: string; expires_at?: string } }>("/one-pagers/:id/publish", async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { password?: string; expires_at?: string } }>(
+    "/one-pagers/:id/publish",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (req, reply) => {
     const onePagerId = (req.params as any).id;
     const body = (req.body as any) || {};
     const record = await (prisma as any).one_pagers.findUnique({ where: { id: onePagerId } });
@@ -153,9 +156,9 @@ export default async function routes(app: FastifyInstance) {
       return reply.status(400).send({ error: "one_pager_not_ready" });
     }
 
-    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const token = crypto.randomBytes(32).toString("base64url");
     const password_hash = body.password ? hashPassword(body.password) : null;
-    const expires_at = body.expires_at ? new Date(body.expires_at) : null;
+    const expires_at = body.expires_at ? new Date(body.expires_at) : new Date(Date.now() + 30 * 86400_000);
 
     const shareLink = await (prisma as any).share_links.create({
       data: {
@@ -189,5 +192,6 @@ export default async function routes(app: FastifyInstance) {
       password_required: Boolean(password_hash),
       share_link_id: shareLink.id,
     });
-  });
+  }
+  );
 }

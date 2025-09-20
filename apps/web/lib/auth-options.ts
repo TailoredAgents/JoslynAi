@@ -2,6 +2,21 @@ import crypto from "node:crypto";
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import EmailProvider from "next-auth/providers/email";
+
+// Simple in-memory throttle for Credentials sign-ins (best-effort)
+const attemptMap = new Map<string, { count: number; windowStart: number }>();
+function tooManyAttempts(key: string, limit = 5, windowMs = 60_000) {
+  const now = Date.now();
+  const rec = attemptMap.get(key) || { count: 0, windowStart: now };
+  if (now - rec.windowStart > windowMs) {
+    rec.count = 0;
+    rec.windowStart = now;
+  }
+  rec.count += 1;
+  attemptMap.set(key, rec);
+  return rec.count > limit;
+}
 
 function deriveOrgId(email: string | null | undefined) {
   const source = (email || "anon@joslyn.ai").trim().toLowerCase();
@@ -18,15 +33,27 @@ function buildUser(email: string) {
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    Credentials({
-      name: "Email",
-      credentials: { email: { label: "Email", type: "email" } },
-      async authorize(credentials) {
-        const email = (credentials?.email || "").toString().trim().toLowerCase();
-        if (!email) return null;
-        return buildUser(email) as any;
-      },
-    }),
+    // Prefer magic-link email if SMTP is configured
+    ...((process.env.EMAIL_FROM && (process.env.SMTP_HOST || process.env.EMAIL_SERVER))
+      ? [EmailProvider({
+          server: process.env.EMAIL_SERVER || {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT || 587),
+            auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+          },
+          from: process.env.EMAIL_FROM,
+        })]
+      : [Credentials({
+          name: "Email (dev)",
+          credentials: { email: { label: "Email", type: "email" } },
+          async authorize(credentials, req) {
+            const ip = (req as any)?.headers?.["x-forwarded-for"] || "unknown";
+            if (tooManyAttempts(String(ip))) return null;
+            const email = (credentials?.email || "").toString().trim().toLowerCase();
+            if (!email) return null;
+            return buildUser(email) as any;
+          },
+        })]),
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
           Google({

@@ -107,8 +107,13 @@ export default async function routes(app: FastifyInstance) {
     if (!letter) return reply.status(404).send({ error: "letter not found" });
 
     const PDFDocument = (await import("pdfkit" as any)).default;
-    const tmp = (process.platform === 'win32' ? process.env.TEMP || 'C:/temp' : '/tmp') + `/${letter_id}.pdf`;
     const fs2 = await import("node:fs");
+    const os2 = await import("node:os");
+    const path2 = await import("node:path");
+    const tmpDir = await new Promise<string>((resolve, reject) =>
+      fs2.mkdtemp(path2.join(os2.tmpdir(), `letter_${letter_id}_`), (err, folder) => (err ? reject(err) : resolve(folder)))
+    );
+    const tmp = path2.join(tmpDir, `${letter_id}.pdf`);
     const doc = new (PDFDocument as any)({ margin: 50 });
     const stream = (doc as any).pipe(fs2.createWriteStream(tmp));
     (doc as any).fontSize(12).text(letter.draft_json.text, { align: "left" });
@@ -120,6 +125,7 @@ export default async function routes(app: FastifyInstance) {
     const key = `org/${orgId || 'unknown'}/letters/${letter_id}.pdf`;
     await putObject(key, fs2.readFileSync(tmp), "application/pdf");
     try { fs2.unlinkSync(tmp); } catch {}
+    try { fs2.rmdirSync(tmpDir); } catch {}
 
     await (prisma as any).letters.update({ where: { id: letter_id }, data: { pdf_uri: key } });
     return reply.send({ pdf_uri: key });
