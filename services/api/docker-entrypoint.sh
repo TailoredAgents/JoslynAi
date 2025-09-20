@@ -3,6 +3,13 @@ set -e
 
 pnpm --filter @joslyn-ai/core build
 
+# Ensure Prisma Client is generated for the API at runtime using the shared schema
+echo "[entrypoint] Generating Prisma Client from packages/db/prisma/schema.prisma"
+pnpm -w exec prisma generate --schema packages/db/prisma/schema.prisma || {
+  echo "[entrypoint] prisma generate failed" >&2
+  exit 1
+}
+
 # Optional migrations/extensions at startup (disabled by default in production)
 if [ "${RUN_MIGRATIONS}" = "true" ]; then
   echo "[entrypoint] Running Prisma db push and extension scripts..."
