@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
@@ -141,9 +141,9 @@ export default function HeaderNav() {
               </button>
             </div>
           ) : (
-            <button className="inline-flex items-center rounded-full border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700" onClick={() => signIn()}>
+            <Link href="/signin" className="inline-flex items-center rounded-full border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:text-brand-700">
               Log in
-            </button>
+            </Link>
           )}
         </div>
 
@@ -180,9 +180,9 @@ export default function HeaderNav() {
                 Logout {session.user.email}
               </button>
             ) : (
-              <button className="w-full rounded-xl bg-brand-500 px-3 py-2 text-left text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600" onClick={() => signIn()}>
+              <Link href="/signin" className="block w-full rounded-xl bg-brand-500 px-3 py-2 text-left text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600">
                 Log in
-              </button>
+              </Link>
             )}
           </div>
         </div>
