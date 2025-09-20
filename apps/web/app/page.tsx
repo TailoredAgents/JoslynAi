@@ -282,12 +282,13 @@ export default function HomePage() {
       </section>
 
       <section id="pricing" className="relative overflow-hidden rounded-3xl border border-brand-100 bg-white p-0 shadow-uplift">
-        <div className="grid gap-6 p-10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 p-10 sm:grid-cols-2 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-heading text-slate-900">Basic</h2>
             <p className="mt-1 text-sm text-slate-500">Core tools to get started.</p>
             <p className="mt-4 text-3xl font-heading text-slate-900">$9<span className="text-sm text-slate-500">/mo</span></p>
             <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li>Chat with the copilot</li>
               <li>Ask questions with citations</li>
               <li>Brief and letter drafts</li>
             </ul>
@@ -303,6 +304,7 @@ export default function HomePage() {
             <p className="mt-1 text-sm text-slate-500">Everything in Basic, plus automation.</p>
             <p className="mt-4 text-3xl font-heading text-slate-900">$29<span className="text-sm text-slate-500">/mo</span></p>
             <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li>Chat with the copilot</li>
               <li>Smart attachments</li>
               <li>Send letters</li>
               <li>Priority support</li>
@@ -313,20 +315,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-heading text-slate-900">Business</h2>
-            <p className="mt-1 text-sm text-slate-500">Teams and organizations.</p>
-            <p className="mt-4 text-3xl font-heading text-slate-900">$79<span className="text-sm text-slate-500">/mo</span></p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-600">
-              <li>Admin insights</li>
-              <li>Advocacy & recommendations</li>
-              <li>IEP diff</li>
-            </ul>
-            <div className="mt-6 flex gap-2">
-              <Link href="/onboarding" className="inline-flex items-center rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600">Talk to sales</Link>
-              <Link href="/api/auth/signin" className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 hover:border-brand-400 hover:text-brand-700">Log in</Link>
-            </div>
-          </div>
+          
         </div>
       </section>
 
@@ -349,7 +338,6 @@ export default function HomePage() {
     </div>
   );
 }
-
 
 
 

@@ -11,30 +11,20 @@ export default async function routes(app: FastifyInstance) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   // Feature matrices per plan (nickname on Stripe Price)
-  // Plans we support: basic ($9), pro ($29), business ($79)
+  // Plans we support: basic ($9), pro ($29)
   const FEATURES_BY_PLAN: Record<string, any> = {
-    free: { ask: true, brief: true, letters: { render: false, send: false }, smart_attachments: false },
-    basic: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false },
-    pro: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true },
-    business: {
-      ask: true,
-      brief: true,
-      letters: { render: true, send: true },
-      smart_attachments: true,
-      advocacy: true,
-      recommendations: true,
-      iep_diff: true,
-      admin_usage: true,
-    },
-    // Back-compat alias for older "starter" nickname
-    starter: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false },
+    free: { ask: true, brief: true, letters: { render: false, send: false }, smart_attachments: false, chat: false },
+    basic: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false, chat: true },
+    pro: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true, chat: true },
+    // Legacy plans map to closest current offering
+    business: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true, chat: true },
+    starter: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false, chat: true },
   };
 
   // Whitelisted price IDs by plan from env; prevents client from selecting arbitrary prices
   const PRICE_ENV_BY_PLAN: Record<string, string | undefined> = {
     basic: (process.env.PRICE_BASIC || "").trim() || undefined,
     pro: (process.env.PRICE_PRO || "").trim() || undefined,
-    business: (process.env.PRICE_BUSINESS || "").trim() || undefined,
   };
 
   app.post("/billing/checkout", async (req, reply) => {
