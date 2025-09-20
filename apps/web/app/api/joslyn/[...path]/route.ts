@@ -13,7 +13,7 @@ function sanitizeBase(origin: string) {
   }
 }
 
-type CookieStore = ReturnType<typeof cookies>;
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
 function buildIdentity(session: any, cookieStore: CookieStore) {
   const cookieOrg = cookieStore.get("joslyn-org")?.value || null;
@@ -49,7 +49,7 @@ async function proxy(request: Request, params: { path: string[] }) {
   } catch {}
 
   const session = await getServerSession(authOptions);
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const identity = buildIdentity(session, cookieStore);
 
   const headers = new Headers();
@@ -86,20 +86,26 @@ async function proxy(request: Request, params: { path: string[] }) {
 }
 
 export async function GET(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
 export async function POST(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
 export async function PUT(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
 export async function PATCH(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
 export async function DELETE(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
 export async function OPTIONS(request: Request, context: any) {
-  return proxy(request, (context?.params as any) || { path: [] });
+  const params = (await (context?.params)) || { path: [] };
+  return proxy(request, params);
 }
