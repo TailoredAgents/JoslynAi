@@ -10,6 +10,37 @@ export default async function routes(app: FastifyInstance) {
   const stripe = key ? new Stripe(key, { apiVersion: "2023-10-16" as any }) : (null as any);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  const configuredBase = (process.env.PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "").trim();
+  let allowOrigin: string | null = null;
+  let defaultOrigin = "http://localhost:3000";
+  try {
+    if (configuredBase) {
+      allowOrigin = new URL(configuredBase).origin;
+      defaultOrigin = allowOrigin;
+    }
+  } catch {
+    app.log.warn({ configuredBase }, "invalid PUBLIC_BASE_URL; falling back to localhost");
+  }
+  if (!allowOrigin && process.env.NODE_ENV === "production") {
+    throw new Error("PUBLIC_BASE_URL must be configured for billing routes in production");
+  }
+
+  const buildAbsolute = (path: string) => {
+    const normalized = path && path.startsWith("/") ? path : `/${path || ""}`;
+    return new URL(normalized, allowOrigin || defaultOrigin).toString();
+  };
+
+  const pickUrl = (candidate: string | undefined, fallbackPath: string) => {
+    const fallback = buildAbsolute(fallbackPath);
+    if (!candidate) return fallback;
+    try {
+      const url = new URL(candidate);
+      const allowedOrigin = allowOrigin || defaultOrigin;
+      if (url.origin === allowedOrigin) return url.toString();
+    } catch {}
+    return fallback;
+  };
+
   // Feature matrices per plan (nickname on Stripe Price)
   // Plans we support: basic ($9), pro ($29)
   const FEATURES_BY_PLAN: Record<string, any> = {
@@ -50,17 +81,6 @@ export default async function routes(app: FastifyInstance) {
 
     const trialDays = Number(process.env.STRIPE_TRIAL_DAYS || "0");
     // Build/validate return URLs to prevent open redirects
-    const base = (process.env.PUBLIC_BASE_URL || "").trim();
-    const allowOrigin = base ? new URL(base).origin : null;
-    function pickUrl(candidate: string | undefined, fallbackPath: string) {
-      try {
-        if (candidate) {
-          const u = new URL(candidate);
-          if (!allowOrigin || u.origin === allowOrigin) return u.toString();
-        }
-      } catch {}
-      return allowOrigin ? new URL(fallbackPath, allowOrigin).toString() : candidate || fallbackPath;
-    }
     const successUrl = pickUrl(success_url, "/billing/success");
     const cancelUrl = pickUrl(cancel_url, "/billing/cancel");
 
@@ -85,32 +105,24 @@ export default async function routes(app: FastifyInstance) {
     if (typeof (req as any).requireRole === 'function') {
       await (req as any).requireRole(org_id, ["owner", "admin"]);
     }
-    const base = (process.env.PUBLIC_BASE_URL || "").trim();
-    const allowOrigin = base ? new URL(base).origin : null;
-    let ret = return_url;
+    if (!customer_id) return reply.code(400).send({ error: "customer_id_required" });
+
+    const verifiedReturn = pickUrl(return_url, "/billing");
+
     try {
-      if (ret) {
-        const u = new URL(ret);
-        if (allowOrigin && u.origin !== allowOrigin) ret = new URL("/billing", allowOrigin).toString();
-      } else if (allowOrigin) {
-        ret = new URL("/billing", allowOrigin).toString();
-      }
-    } catch {
-      if (allowOrigin) ret = new URL("/billing", allowOrigin).toString();
-    }
-    // Optional scoping: if entitlements table stores a stripe_customer_id, enforce it
-    try {
-      const ent = await (prisma as any).entitlements.findUnique({ where: { org_id }, select: { stripe_customer_id: true } }).catch(() => null);
-      if (ent && ent.stripe_customer_id && customer_id && ent.stripe_customer_id !== customer_id) {
+      const subs = await stripe.subscriptions.list({ customer: customer_id, limit: 1 });
+      const sub = subs.data[0];
+      const subOrg = sub?.metadata?.org_id || sub?.items?.data?.[0]?.metadata?.org_id;
+      if (!sub || (subOrg && subOrg !== org_id)) {
         return reply.code(403).send({ error: "customer_mismatch" });
       }
-      if (ent && ent.stripe_customer_id) {
-        const portal = await stripe.billingPortal.sessions.create({ customer: ent.stripe_customer_id, return_url: ret || return_url });
-        return reply.send({ url: portal.url });
-      }
-    } catch {}
-    // If we cannot verify customer ownership, refuse to prevent cross-org access
-    return reply.code(400).send({ error: "customer_unknown" });
+    } catch (err) {
+      app.log.warn({ err, customer_id, org_id }, "stripe_customer_verification_failed");
+      return reply.code(400).send({ error: "customer_verification_failed" });
+    }
+
+    const portal = await stripe.billingPortal.sessions.create({ customer: customer_id, return_url: verifiedReturn });
+    return reply.send({ url: portal.url });
   });
 
   app.post("/webhooks/stripe", { config: { rawBody: true } }, async (req, reply) => {

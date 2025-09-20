@@ -38,90 +38,95 @@ export default async function routes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: "child_not_found" });
     }
 
-    // Stream to temp file to avoid buffering entire upload in memory
-    const ext = path.extname(data.filename || "");
-    const tmp = path.join(os.tmpdir(), `upload_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
-    await pipeline((data as any).file, fs.createWriteStream(tmp));
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "upload_"));
+    const safeName = path.basename(data.filename || "upload.pdf");
+    const tmp = path.join(tmpDir, safeName);
 
-    // Compute sha256 by streaming temp file
-    const sha256 = await new Promise<string>((resolve, reject) => {
-      const h = crypto.createHash("sha256");
-      const rs = fs.createReadStream(tmp);
-      rs.on("data", (d) => h.update(d as Buffer));
-      rs.on("error", reject);
-      rs.on("end", () => resolve(h.digest("hex")));
-    });
-
-    const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
-
-    // Prefer using Prisma model if available; fallback to raw insert
-    let documentId: string | undefined;
     try {
-      // @ts-ignore - depending on Prisma model naming, this may not exist yet
-      const doc = await (prisma as any).documents?.create?.({
-        data: {
-          child_id: childId,
-          org_id: orgId,
-          type: guessDocType(data.filename),
-          storage_uri: key,
-          sha256,
-          doc_tags: [],
-          original_name: data.filename,
-          version: 1,
-        },
-        select: { id: true },
-      });
-      documentId = (doc as any)?.id;
-    } catch {}
+      // Stream to temp file to avoid buffering entire upload in memory
+      await pipeline((data as any).file, fs.createWriteStream(tmp));
 
-    // dedupe by sha256+child
-    if (!documentId) {
-      const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256, org_id: orgId } }).catch(()=>null);
-      if ((existing as any)?.id) {
-        return reply.send({ document_id: (existing as any).id, storage_key: (existing as any).storage_uri });
-      }
-      // compute version by child+type
-      let version = 1;
+      // Compute sha256 by streaming temp file
+      const sha256 = await new Promise<string>((resolve, reject) => {
+        const h = crypto.createHash("sha256");
+        const rs = fs.createReadStream(tmp);
+        rs.on("data", (d) => h.update(d as Buffer));
+        rs.on("error", reject);
+        rs.on("end", () => resolve(h.digest("hex")));
+      });
+
+      const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
+
+      // Prefer using Prisma model if available; fallback to raw insert
+      let documentId: string | undefined;
       try {
-        const sameType = await (prisma as any).documents.findMany({ where: { child_id: childId, type: guessDocType(data.filename) }, select: { version: true } });
-        const maxV = Math.max(0, ...sameType.map((x:any)=>x.version||0));
-        version = maxV + 1;
+        const doc = await (prisma as any).documents?.create?.({
+          data: {
+            child_id: childId,
+            org_id: orgId,
+            type: guessDocType(data.filename),
+            storage_uri: key,
+            sha256,
+            doc_tags: [],
+            original_name: data.filename,
+            version: 1,
+          },
+          select: { id: true },
+        });
+        documentId = (doc as any)?.id;
       } catch {}
-      const row = await prisma.$queryRawUnsafe(
-        `INSERT INTO documents (child_id, org_id, type, storage_uri, sha256, doc_tags, original_name, version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING id`,
-        childId,
-        orgId,
-        guessDocType(data.filename),
-        key,
-        sha256,
-        JSON.stringify([]),
-        data.filename,
-        version
-      ) as any as { id: string }[];
-      documentId = (row as any)[0]?.id;
+
+      // dedupe by sha256+child
+      if (!documentId) {
+        const existing = await (prisma as any).documents.findFirst?.({ where: { child_id: childId, sha256, org_id: orgId } }).catch(() => null);
+        if ((existing as any)?.id) {
+          return reply.send({ document_id: (existing as any).id, storage_key: (existing as any).storage_uri });
+        }
+        // compute version by child+type
+        let version = 1;
+        try {
+          const sameType = await (prisma as any).documents.findMany({ where: { child_id: childId, type: guessDocType(data.filename) }, select: { version: true } });
+          const maxV = Math.max(0, ...sameType.map((x: any) => x.version || 0));
+          version = maxV + 1;
+        } catch {}
+        const row = await prisma.$queryRawUnsafe(
+          `INSERT INTO documents (child_id, org_id, type, storage_uri, sha256, doc_tags, original_name, version)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id`,
+          childId,
+          orgId,
+          guessDocType(data.filename),
+          key,
+          sha256,
+          JSON.stringify([]),
+          data.filename,
+          version
+        ) as any as { id: string }[];
+        documentId = (row as any)[0]?.id;
+      }
+
+      if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
+
+      // Upload to object storage by streaming from temp file
+      await putObject(key, fs.createReadStream(tmp), (data as any).mimetype);
+
+      // Create job run for tracking
+      let jobId: string | null = null;
+      try {
+        const job = await (prisma as any).job_runs.create({
+          data: { child_id: childId, org_id: orgId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
+          select: { id: true }
+        });
+        jobId = (job as any)?.id || null;
+      } catch {}
+
+      await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, org_id: orgId, filename: data.filename, job_id: jobId });
+
+      return reply.send({ document_id: documentId, storage_key: key, job_id: jobId });
+    } finally {
+      try { await fs.promises.unlink(tmp); } catch {}
+      try { await fs.promises.rm(tmpDir, { recursive: true, force: true }); } catch {}
     }
-
-    if (!documentId) return reply.status(500).send({ error: "Failed to persist document" });
-
-    // Upload to object storage by streaming from temp file
-    await putObject(key, fs.createReadStream(tmp), (data as any).mimetype);
-    try { fs.unlinkSync(tmp); } catch {}
-
-    // Create job run for tracking
-    let jobId: string | null = null;
-    try {
-      const job = await (prisma as any).job_runs.create({
-        data: { child_id: childId, org_id: orgId, type: "upload", status: "pending", payload_json: { history: [], document_id: documentId, filename: data.filename } },
-        select: { id: true }
-      });
-      jobId = (job as any)?.id || null;
-    } catch {}
-
-    await enqueue({ kind: "ingest_pdf", document_id: documentId, s3_key: key, child_id: childId, org_id: orgId, filename: data.filename, job_id: jobId });
-
-    return reply.send({ document_id: documentId, storage_key: key, job_id: jobId });
   });
 
   // Spans by document/page to aid highlighter

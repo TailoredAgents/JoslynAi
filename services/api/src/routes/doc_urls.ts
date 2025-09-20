@@ -9,7 +9,8 @@ export default async function routes(app: FastifyInstance) {
     async (req, reply) => {
       const { id } = req.params as any;
       const orgId = orgIdFromRequest(req as any);
-      const ttl = Math.min(Number((req.query as any)?.ttl ?? 900), 3600) || 900;
+      const rawTtl = Number((req.query as any)?.ttl);
+      const ttl = Math.min(Math.max(Number.isFinite(rawTtl) ? Math.floor(rawTtl) : 900, 60), 3600);
       const doc = await (prisma as any).documents.findFirst({ where: { id, org_id: orgId }, select: { storage_uri: true } });
       if (!doc?.storage_uri) return reply.status(404).send({ error: "not_found" });
       const url = await signedGetUrl(doc.storage_uri, ttl);

@@ -417,6 +417,10 @@ model events {
   type         String
   payload_json Json
   created_at   DateTime @default(now())
+
+  @@index([org_id])
+  @@index([org_id, created_at])
+  @@index([org_id, type])
 }
 
 model org_settings {

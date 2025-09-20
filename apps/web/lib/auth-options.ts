@@ -31,42 +31,67 @@ function buildUser(email: string) {
   return { id, email: normalized, org_id, role: "owner" as const };
 }
 
+const hasEmailProvider = Boolean(
+  process.env.EMAIL_FROM &&
+    (process.env.EMAIL_SERVER || (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS))
+);
+const allowDevCredentials = process.env.ALLOW_DEV_FAKE_LOGIN === "1";
+
+if (!hasEmailProvider) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("EMAIL auth configuration missing: set EMAIL_FROM and SMTP settings.");
+  }
+  if (!allowDevCredentials) {
+    throw new Error(
+      "Email auth not configured. Set EMAIL_FROM/SMTP_* or explicitly allow ALLOW_DEV_FAKE_LOGIN=1 for dev."
+    );
+  }
+}
+
+const providers: NextAuthOptions["providers"] = [];
+
+if (hasEmailProvider) {
+  providers.push(
+    EmailProvider({
+      server: process.env.EMAIL_SERVER || {
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+      },
+      from: process.env.EMAIL_FROM!,
+    })
+  );
+} else if (allowDevCredentials) {
+  providers.push(
+    Credentials({
+      name: "Email (dev)",
+      credentials: { email: { label: "Email", type: "email" } },
+      async authorize(credentials, req) {
+        const ip = (req as any)?.headers?.["x-forwarded-for"] || "unknown";
+        if (tooManyAttempts(String(ip))) return null;
+        const email = (credentials?.email || "").toString().trim().toLowerCase();
+        if (!email) return null;
+        return buildUser(email) as any;
+      },
+    })
+  );
+}
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      profile(profile) {
+        const email = profile.email || "";
+        return { ...profile, ...buildUser(email) } as any;
+      },
+    })
+  );
+}
+
 export const authOptions: NextAuthOptions = {
-  providers: [
-    // Prefer magic-link email if SMTP is configured
-    ...((process.env.EMAIL_FROM && (process.env.SMTP_HOST || process.env.EMAIL_SERVER))
-      ? [EmailProvider({
-          server: process.env.EMAIL_SERVER || {
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT || 587),
-            auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-          },
-          from: process.env.EMAIL_FROM,
-        })]
-      : [Credentials({
-          name: "Email (dev)",
-          credentials: { email: { label: "Email", type: "email" } },
-          async authorize(credentials, req) {
-            const ip = (req as any)?.headers?.["x-forwarded-for"] || "unknown";
-            if (tooManyAttempts(String(ip))) return null;
-            const email = (credentials?.email || "").toString().trim().toLowerCase();
-            if (!email) return null;
-            return buildUser(email) as any;
-          },
-        })]),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? [
-          Google({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            profile(profile) {
-              const email = profile.email || "";
-              return { ...profile, ...buildUser(email) } as any;
-            },
-          }),
-        ]
-      : []),
-  ],
+  providers,
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
