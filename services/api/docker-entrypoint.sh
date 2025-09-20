@@ -4,12 +4,13 @@ set -e
 pnpm --filter @joslyn-ai/core build
 
 # Ensure Prisma Client is generated for the API at runtime using the shared schema
-echo "[entrypoint] Generating Prisma Client from packages/db/prisma/schema.prisma"
-# Prefer running Prisma CLI from the db package (where it is declared)
-if ! pnpm --filter @joslyn-ai/db exec prisma generate --schema packages/db/prisma/schema.prisma; then
-  echo "[entrypoint] 'pnpm --filter @joslyn-ai/db exec prisma' not available; falling back to dlx"
+SCHEMA_DB_REL="packages/db/prisma/schema.prisma"
+echo "[entrypoint] Generating Prisma Client from ${SCHEMA_DB_REL}"
+# Prefer running Prisma CLI from the db package (where it is declared). When filtered, CWD=packages/db, so schema path is prisma/schema.prisma
+if ! pnpm --filter @joslyn-ai/db exec prisma generate --schema prisma/schema.prisma; then
+  echo "[entrypoint] Filtered exec failed; falling back to dlx in workspace root"
   PRISMA_VER="${PRISMA_VER:-5.18.0}"
-  pnpm dlx -y prisma@"${PRISMA_VER}" generate --schema packages/db/prisma/schema.prisma || {
+  pnpm dlx prisma@"${PRISMA_VER}" generate --schema "${SCHEMA_DB_REL}" || {
     echo "[entrypoint] prisma generate failed" >&2
     exit 1
   }
