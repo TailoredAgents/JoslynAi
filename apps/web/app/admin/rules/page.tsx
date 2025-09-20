@@ -12,7 +12,6 @@ type Rule = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || "";
 
 export default function AdminRulesPage() {
   const [rules, setRules] = useState<Rule[]>([]);
@@ -22,21 +21,13 @@ export default function AdminRulesPage() {
   const [search, setSearch] = useState("");
   const [scope, setScope] = useState("all");
 
-  const headerKey = useMemo(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("adminKey");
-      if (stored) return stored;
-    }
-    return ADMIN_KEY;
-  }, []);
+  const headerKey = "";
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/admin/rules`, {
-        headers: headerKey ? { "x-admin-api-key": headerKey } : {}
-      });
+      const res = await fetch(`${API_BASE}/admin/rules`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setRules(Array.isArray(data) ? data : []);
@@ -58,10 +49,7 @@ export default function AdminRulesPage() {
     try {
       const res = await fetch(`${API_BASE}/admin/rules/${rule.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(headerKey ? { "x-admin-api-key": headerKey } : {})
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           delta_days: Number(rule.delta_days) || 0,
           description: rule.description || null,
@@ -102,9 +90,7 @@ export default function AdminRulesPage() {
             <h1 className="text-3xl font-heading text-slate-900">Timeline rules</h1>
             <p className="text-sm text-slate-600">Tune how Joslyn calculates deadlines by jurisdiction and rule type.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
-            {headerKey ? "Authenticated with admin key" : "Provide NEXT_PUBLIC_ADMIN_API_KEY to edit."}
-          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">Admin access requires owner/admin role.</div>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-slate-600">
           <input

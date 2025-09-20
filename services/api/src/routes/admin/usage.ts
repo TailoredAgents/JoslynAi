@@ -9,8 +9,11 @@ function parseDate(d?: string, def?: Date) {
 
 export default async function routes(app: FastifyInstance) {
   app.addHook("onRequest", async (req, reply) => {
-    const key = (req.headers["x-admin-api-key"] as string) || "";
-    if (!key || key !== process.env.ADMIN_API_KEY) {
+    const org_id = (req as any).user?.org_id || null;
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function' && org_id) {
+      await (req as any).requireRole(org_id, ["owner", "admin"]);
+    } else {
       return reply.code(401).send({ error: "unauthorized" });
     }
   });

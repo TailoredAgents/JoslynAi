@@ -58,7 +58,10 @@ const AskAnswerSchema = {
 };
 
 export default async function routes(fastify: FastifyInstance) {
-  fastify.post<{ Params: { id: string }, Body: { query: string, lang?: string } }>("/children/:id/ask", async (req, reply) => {
+  fastify.post<{ Params: { id: string }, Body: { query: string, lang?: string } }>(
+    "/children/:id/ask",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
     if (!(await requireEntitlement(req, reply, "ask"))) {
       return;
@@ -128,6 +131,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     const cit = (parsed.citations || []).slice(0, 5);
     return reply.send({ answer: withDisclaimer(parsed.answer), citations: cit });
-  });
+    }
+  );
 }
 

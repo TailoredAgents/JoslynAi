@@ -47,7 +47,7 @@ function buildAttachmentUrl(key: string) {
 }
 
 export default async function routes(app: FastifyInstance) {
-  app.post("/tools/letter/draft", async (req, reply) => {
+  app.post("/tools/letter/draft", { config: { rateLimit: { max: 15, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { kind, merge_fields, lang = "en" } = (req.body as any);
     const orgId = orgIdFromRequest(req as any);
     let template;
@@ -97,7 +97,7 @@ export default async function routes(app: FastifyInstance) {
     return reply.send({ letter_id: row.id, text: polished });
   });
 
-  app.post("/tools/letter/render", async (req, reply) => {
+  app.post("/tools/letter/render", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
     if (!(await requireEntitlement(req, reply, "letters.render"))) {
       return;
@@ -119,12 +119,13 @@ export default async function routes(app: FastifyInstance) {
     const orgId = (letter as any).org_id || (req as any).orgId || null;
     const key = `org/${orgId || 'unknown'}/letters/${letter_id}.pdf`;
     await putObject(key, fs2.readFileSync(tmp), "application/pdf");
+    try { fs2.unlinkSync(tmp); } catch {}
 
     await (prisma as any).letters.update({ where: { id: letter_id }, data: { pdf_uri: key } });
     return reply.send({ pdf_uri: key });
   });
 
-  app.post("/tools/letter/send", async (req, reply) => {
+  app.post("/tools/letter/send", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { requireEntitlement } = await import("../mw/entitlements.js");
     if (!(await requireEntitlement(req, reply, "letters.send"))) {
       return;
@@ -145,13 +146,15 @@ export default async function routes(app: FastifyInstance) {
       secure: false,
     });
 
-    const link = buildAttachmentUrl(letter.pdf_uri);
+    // Use a short-lived presigned URL for private bucket access
+    const { signedGetUrl } = await import("../lib/s3.js");
+    const link = await signedGetUrl(letter.pdf_uri, 15 * 60); // 15 minutes
 
     await transporter.sendMail({
       from: process.env.MAIL_FROM || "no-reply@joslyn-ai.local",
       to, subject: subject || "IEP Letter",
       text: (letter as any).draft_json.text + `\n\nPDF: ${link}`,
-      attachments: [{ filename: "letter.pdf", path: link }]
+      attachments: [{ filename: "letter.pdf", path: link, contentType: "application/pdf" }]
     });
 
     await (prisma as any).letters.update({ where: { id: letter_id }, data: { status: "sent", sent_via: "email", sent_at: new Date() } });

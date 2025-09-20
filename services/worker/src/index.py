@@ -50,7 +50,7 @@ def _patch_job(job_id: str | None, stage: str, status: str, org_id: str | None =
         payload["error_text"] = error_text
     try:
         base = API_BASE.rstrip("/")
-        resp = requests.patch(f"{base}/jobs/{job_id}", json=payload, headers=headers, timeout=5)
+        resp = requests.patch(f"{base}/internal/jobs/{job_id}", json=payload, headers=headers, timeout=5)
         if resp.status_code >= 400:
             print(f"[INDEX] patch job failed: {resp.status_code} {resp.text}")
     except Exception as e:

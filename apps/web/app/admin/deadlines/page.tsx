@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || "";
 
 const kinds = [
   { id: "all", label: "All deadlines" },
@@ -31,13 +30,7 @@ export default function AdminDeadlinesPage() {
   const [selectedKind, setSelectedKind] = useState("all");
   const [error, setError] = useState<string | null>(null);
 
-  const headerKey = useMemo(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("adminKey");
-      if (stored) return stored;
-    }
-    return ADMIN_KEY;
-  }, []);
+  const headerKey = "";
 
   async function load() {
     setLoading(true);
@@ -48,9 +41,7 @@ export default function AdminDeadlinesPage() {
       if (from) params.set("from", from);
       if (to) params.set("to", to);
       if (selectedKind !== "all") params.set("kind", selectedKind);
-      const res = await fetch(`${API_BASE}/admin/deadlines?${params.toString()}`, {
-        headers: headerKey ? { "x-admin-api-key": headerKey } : {}
-      });
+      const res = await fetch(`${API_BASE}/admin/deadlines?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setRows(Array.isArray(data) ? data : []);
@@ -95,9 +86,9 @@ export default function AdminDeadlinesPage() {
             ))}
           </div>
         </div>
-        {!headerKey && (
+        {false && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-            NEXT_PUBLIC_ADMIN_API_KEY is not set. Provide an admin key to fetch live data.
+            Admin key required.
           </div>
         )}
       </header>
@@ -140,7 +131,7 @@ export default function AdminDeadlinesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="px-4 py-4 text-slate-500" colSpan={5}>Loading deadlines…</td></tr>
+                <tr><td className="px-4 py-4 text-slate-500" colSpan={5}>Loading deadlines?</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td className="px-4 py-4 text-slate-500" colSpan={5}>No deadlines match your filters.</td></tr>
               ) : (
@@ -160,7 +151,7 @@ export default function AdminDeadlinesPage() {
                         {r.source_doc_id ? (
                           <Link href={`/documents/${r.source_doc_id}/view`} className="underline">{r.source_doc_id}</Link>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-400">?</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -197,5 +188,6 @@ function StatusPill({ status }: { status: "upcoming" | "past" }) {
     </span>
   );
 }
+
 
 

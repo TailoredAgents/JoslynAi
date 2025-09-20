@@ -33,7 +33,7 @@ export default function HeaderNav() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const envKey = process.env.NEXT_PUBLIC_ADMIN_API_KEY;
+    const envKey = undefined as any;
     const localKey = typeof window !== "undefined" ? localStorage.getItem("adminKey") : null;
     setShowAdmin(!!envKey || !!localKey);
   }, []);

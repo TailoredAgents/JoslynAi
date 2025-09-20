@@ -3,8 +3,11 @@ import { prisma } from "../../lib/db.js";
 
 export default async function routes(app: FastifyInstance) {
   app.addHook("onRequest", async (req, reply) => {
-    const key = req.headers["x-admin-api-key"] as string | undefined;
-    if (!key || key !== process.env.ADMIN_API_KEY) {
+    const org_id = (req as any).user?.org_id || null;
+    // @ts-ignore
+    if (typeof (req as any).requireRole === 'function' && org_id) {
+      await (req as any).requireRole(org_id, ["owner", "admin"]);
+    } else {
       return reply.code(401).send({ error: "unauthorized" });
     }
   });
@@ -39,11 +42,7 @@ export default async function routes(app: FastifyInstance) {
   // Create deadline (guarded) is already in admin/rules.ts for compute; support simple direct create too
   app.post("/admin/deadlines", async (req, reply) => {
     const { child_id, kind, base_date, jurisdiction = "US-*" } = (req.body as any);
-    const org_id = (req as any).user?.org_id || "demo-org";
-    // @ts-ignore
-    if (typeof (req as any).requireRole === 'function') {
-      await (req as any).requireRole(org_id, ["owner"]);
-    }
+    const org_id = (req as any).user?.org_id || null;
     const rule = await (prisma as any).timeline_rules.findFirst({
       where: { kind, OR: [{ jurisdiction }, { jurisdiction: "US-*" }], active: true },
       orderBy: [{ jurisdiction: "desc" as const }]

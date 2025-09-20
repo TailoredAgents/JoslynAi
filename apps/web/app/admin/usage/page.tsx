@@ -20,7 +20,6 @@ type UsageResp = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/joslyn";
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || "";
 
 export default function AdminUsagePage() {
   const [data, setData] = useState<UsageResp | null>(null);
@@ -28,13 +27,7 @@ export default function AdminUsagePage() {
   const [loading, setLoading] = useState(true);
   const [windowKey, setWindowKey] = useState(30);
 
-  const headerKey = useMemo(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("adminKey");
-      if (stored) return stored;
-    }
-    return ADMIN_KEY;
-  }, []);
+  const headerKey = "";
 
   useEffect(() => {
     const base = API_BASE;
@@ -42,9 +35,7 @@ export default function AdminUsagePage() {
     const from = new Date(Date.now() - windowKey * 24 * 3600 * 1000);
     setLoading(true);
     setError(null);
-    fetch(`${base}/admin/usage?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}`, {
-      headers: headerKey ? { "x-admin-api-key": headerKey } : {}
-    })
+    fetch(`${base}/admin/usage?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
       .then((payload) => {
         setData(payload);
@@ -76,7 +67,7 @@ export default function AdminUsagePage() {
             <option value={90}>Last 90 days</option>
           </select>
         </div>
-        {!headerKey && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">NEXT_PUBLIC_ADMIN_API_KEY not set. Provide one to pull real usage.</div>}
+        {false && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">Admin key required.</div>}
       </header>
 
       {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
