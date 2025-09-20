@@ -34,7 +34,7 @@
     "qrcode": "^1.5.4",
     "stripe": "^16.0.0",
     "undici": "^6.19.8",
-    "fastify-raw-body": "^4.3.0"
+    "@fastify/raw-body": "^6.0.0"
   },
   "devDependencies": {
     "@types/mustache": "^4.2.5",
