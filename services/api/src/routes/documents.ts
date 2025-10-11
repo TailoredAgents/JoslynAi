@@ -47,10 +47,10 @@ function isAllowedMime(mime: string | null | undefined) {
   return ALLOWED_MIME_TYPES.includes(mime.toLowerCase());
 }
 
-let fileTypeModulePromise: Promise<typeof import("file-type/node")> | null = null;
+let fileTypeModulePromise: Promise<typeof import("file-type")> | null = null;
 async function detectFileType(filePath: string) {
   if (!fileTypeModulePromise) {
-    fileTypeModulePromise = import("file-type/node");
+    fileTypeModulePromise = import("file-type");
   }
   const { fileTypeFromFile } = await fileTypeModulePromise;
   return fileTypeFromFile(filePath);

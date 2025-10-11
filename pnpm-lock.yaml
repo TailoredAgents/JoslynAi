@@ -176,6 +176,9 @@ importers:
         specifier: ^6.19.8
         version: 6.21.3
     devDependencies:
+      '@types/form-data':
+        specifier: ^2.5.0
+        version: 2.5.2
       '@types/mustache':
         specifier: ^4.2.5
         version: 4.2.6
@@ -185,6 +188,9 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.5
+      form-data:
+        specifier: ^4.0.0
+        version: 4.0.4
       tsx:
         specifier: ^4.16.2
         version: 4.20.5
@@ -2283,6 +2289,10 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+
+  '@types/form-data@2.5.2':
+    resolution: {integrity: sha512-tfmcyHn1Pp9YHAO5r40+UuZUPAZbUEgqTel3EuEKpmF9hPkXgR4l41853raliXnb4gwyPNoQOfvgGGlHN5WSog==}
+    deprecated: This is a stub types definition. form-data provides its own type definitions, so you do not need this installed.
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -9666,6 +9676,10 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/form-data@2.5.2':
+    dependencies:
+      form-data: 4.0.4
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
