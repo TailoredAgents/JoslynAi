@@ -14,6 +14,7 @@ Tech Stack
 Getting Started
 
 - Copy env: `cp .env.example .env` and fill keys (at least `OPENAI_API_KEY`).
+  - Keep `JWT_SECRET` and `API_JWT_SECRET` identical so the Next.js proxy and API share the same signing key.
 
 Local dev (Docker Compose)
 
@@ -60,6 +61,7 @@ Services
 - Web (apps/web)
 - API (services/api)
 - Worker (services/worker)
+  - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, and `JOB_QUEUE_LOG_INTERVAL` for retry/backoff logging.
 - DB schema + extensions (packages/db)
 
 Minimal endpoints
@@ -112,4 +114,3 @@ Telemetry & memory
 - `GET /documents/:id/url` (org-scoped)
 - `GET /documents/:id/spans?page=N` (org-scoped)
 - `POST /tools/letter/draft|render|send` (org/role/entitlement-scoped)
-

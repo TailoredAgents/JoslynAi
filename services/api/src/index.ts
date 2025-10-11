@@ -59,9 +59,13 @@ const app = Fastify({
   },
 });
 
+const rawJwtSecret = process.env.JWT_SECRET || process.env.API_JWT_SECRET;
 // Enforce JWT secret presence in production
-if ((process.env.NODE_ENV === "production") && !process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET is required in production");
+if ((process.env.NODE_ENV === "production") && !rawJwtSecret) {
+  throw new Error("JWT_SECRET (or API_JWT_SECRET) is required in production");
+}
+if ((process.env.NODE_ENV === "production") && process.env.ALLOW_HEADER_AUTH === "1") {
+  throw new Error("ALLOW_HEADER_AUTH=1 is not permitted in production");
 }
 
 await app.register(fastifyRawBody, {
@@ -91,7 +95,7 @@ await app.register(cors, {
   credentials: true,
 });
 
-const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined as any : "dev-secret");
+const jwtSecret = rawJwtSecret || (process.env.NODE_ENV === "production" ? undefined as any : "dev-secret");
 await app.register(jwt, { secret: jwtSecret });
 await app.register(rateLimit, {
   max: 300,

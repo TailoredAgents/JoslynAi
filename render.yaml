@@ -53,7 +53,9 @@ services:
       - key: S3_SECRET_ACCESS_KEY
         sync: false
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
+      - key: API_JWT_SECRET
+        sync: false
       - key: INTERNAL_SELF_BASE
         value: http://iep-ally-api:8080
       - key: MAIL_HOST
