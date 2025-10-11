@@ -9,6 +9,7 @@ import { prisma } from "../lib/db.js";
 import { putObject } from "../lib/s3.js";
 import { enqueue } from "../lib/redis.js";
 import { orgIdFromRequest, resolveChildId } from "../lib/child.js";
+import { scanFileForViruses } from "../lib/clamav.js";
 
 function guessDocType(filename: string) {
   const f = filename.toLowerCase();
@@ -16,6 +17,43 @@ function guessDocType(filename: string) {
   if (f.includes("denial")) return "denial_letter";
   if (f.includes("iep")) return "iep";
   return "other";
+}
+
+const ALLOWED_EXTENSIONS = (process.env.ALLOWED_UPLOAD_EXT || ".pdf,.doc,.docx,.txt")
+  .split(",")
+  .map((ext) => ext.trim().toLowerCase())
+  .filter(Boolean);
+
+const ALLOWED_MIME_TYPES = (process.env.ALLOWED_UPLOAD_MIME ||
+  "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain").split(",")
+  .map((mime) => mime.trim().toLowerCase())
+  .filter(Boolean);
+
+function sanitizeFilename(input: string) {
+  const base = path.basename(input || "upload");
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return cleaned || `upload_${Date.now()}.dat`;
+}
+
+function isAllowedExtension(filename: string) {
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.length) return true;
+  return ALLOWED_EXTENSIONS.includes(ext);
+}
+
+function isAllowedMime(mime: string | null | undefined) {
+  if (!mime) return false;
+  if (!ALLOWED_MIME_TYPES.length) return true;
+  return ALLOWED_MIME_TYPES.includes(mime.toLowerCase());
+}
+
+let fileTypeModulePromise: Promise<typeof import("file-type/node")> | null = null;
+async function detectFileType(filePath: string) {
+  if (!fileTypeModulePromise) {
+    fileTypeModulePromise = import("file-type/node");
+  }
+  const { fileTypeFromFile } = await fileTypeModulePromise;
+  return fileTypeFromFile(filePath);
 }
 
 export default async function routes(fastify: FastifyInstance) {
@@ -39,12 +77,51 @@ export default async function routes(fastify: FastifyInstance) {
     }
 
     const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "upload_"));
-    const safeName = path.basename(data.filename || "upload.pdf");
+    const safeName = sanitizeFilename(data.filename || "upload.pdf");
     const tmp = path.join(tmpDir, safeName);
 
     try {
       // Stream to temp file to avoid buffering entire upload in memory
       await pipeline((data as any).file, fs.createWriteStream(tmp));
+
+      const stats = await fs.promises.stat(tmp);
+      if (!stats.size) {
+        return reply.status(400).send({ error: "invalid_upload", message: "File is empty" });
+      }
+      if (stats.size > MAX_UPLOAD_MB * 1024 * 1024) {
+        return reply.status(400).send({ error: "invalid_upload", message: "File exceeds maximum size" });
+      }
+
+      if (!isAllowedExtension(safeName)) {
+        return reply.status(415).send({ error: "unsupported_type", message: "File extension not allowed" });
+      }
+
+      try {
+        const typeResult = await detectFileType(tmp);
+        const detectedMime = typeResult?.mime || data.mimetype || "";
+        if (typeResult?.mime && !isAllowedMime(typeResult.mime)) {
+          return reply.status(415).send({ error: "unsupported_type", message: `Detected MIME ${typeResult.mime} not allowed` });
+        }
+        if (!typeResult?.mime && data.mimetype && !isAllowedMime(data.mimetype)) {
+          return reply.status(415).send({ error: "unsupported_type", message: `Declared MIME ${data.mimetype} not allowed` });
+        }
+        if (!typeResult?.mime && !data.mimetype) {
+          return reply.status(415).send({ error: "unsupported_type", message: "Cannot determine file type" });
+        }
+      } catch (err) {
+        return reply.status(400).send({ error: "invalid_upload", message: "Failed to inspect file type" });
+      }
+
+      try {
+        await scanFileForViruses(tmp);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const infected = message.toLowerCase().includes("found");
+        return reply.status(infected ? 400 : 500).send({
+          error: infected ? "infected_upload" : "scan_failed",
+          message,
+        });
+      }
 
       // Compute sha256 by streaming temp file
       const sha256 = await new Promise<string>((resolve, reject) => {
@@ -55,7 +132,7 @@ export default async function routes(fastify: FastifyInstance) {
         rs.on("end", () => resolve(h.digest("hex")));
       });
 
-      const key = `org/${orgId}/children/${childId}/${Date.now()}_${data.filename}`;
+      const key = `org/${orgId}/children/${childId}/${Date.now()}_${safeName}`;
 
       // Prefer using Prisma model if available; fallback to raw insert
       let documentId: string | undefined;
@@ -68,7 +145,7 @@ export default async function routes(fastify: FastifyInstance) {
             storage_uri: key,
             sha256,
             doc_tags: [],
-            original_name: data.filename,
+            original_name: safeName,
             version: 1,
           },
           select: { id: true },
@@ -99,7 +176,7 @@ export default async function routes(fastify: FastifyInstance) {
           key,
           sha256,
           JSON.stringify([]),
-          data.filename,
+          safeName,
           version
         ) as any as { id: string }[];
         documentId = (row as any)[0]?.id;

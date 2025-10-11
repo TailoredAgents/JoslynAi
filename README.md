@@ -114,3 +114,7 @@ Telemetry & memory
 - `GET /documents/:id/url` (org-scoped)
 - `GET /documents/:id/spans?page=N` (org-scoped)
 - `POST /tools/letter/draft|render|send` (org/role/entitlement-scoped)
+
+Retention
+
+- See `docs/RETENTION.md` for storage lifecycle, cleanup, and backup guidance.
