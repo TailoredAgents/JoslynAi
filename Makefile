@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web
+.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web purge
 
 up:
 	docker compose up -d --build
@@ -35,4 +35,9 @@ dev-api:
 
 dev-web:
 	PNPM_HOME=$${PNPM_HOME} pnpm dev:web
+
+purge:
+	@if [ -z "$${DATABASE_URL}" ]; then echo "DATABASE_URL required for purge target"; exit 1; fi
+	PGOPTIONS="-c joslyn.retention_days=$${RETENTION_DAYS:-90}" \
+		pnpm --filter @joslyn-ai/db exec prisma db execute --file scripts/purge_ephemeral.sql --schema packages/db/prisma/schema.prisma --url "$${DATABASE_URL}"
 

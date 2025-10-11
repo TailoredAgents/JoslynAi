@@ -125,3 +125,7 @@ Retention
 Observability
 
 - See `docs/OBSERVABILITY.md` for logging, queue metrics, and alerting guidelines.
+
+Compliance
+
+- See `docs/COMPLIANCE.md` for DSR handling, retention purges, and backup/runbook steps.
