@@ -48,6 +48,7 @@ import feedbackRoutes from "./routes/feedback.js";
 import consentRoutes from "./routes/consent.js";
 import realtimeRoutes from "./realtime/index.js";
 import whoamiRoutes from "./routes/whoami.js";
+import internalMetrics from "./routes/internal/metrics.js";
 
 const app = Fastify({
   logger: {
@@ -134,6 +135,7 @@ await app.register(smartAttachments);
 await app.register(adminDeadlines);
 await app.register(internalEob);
 await app.register(internalJobs);
+await app.register(internalMetrics);
 await app.register(translateTools);
 await app.register(profileRoutes);
 await app.register(icsRoutes);

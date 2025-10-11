@@ -121,3 +121,7 @@ Telemetry & memory
 Retention
 
 - See `docs/RETENTION.md` for storage lifecycle, cleanup, and backup guidance.
+
+Observability
+
+- See `docs/OBSERVABILITY.md` for logging, queue metrics, and alerting guidelines.
