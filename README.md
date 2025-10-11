@@ -61,7 +61,7 @@ Services
 - Web (apps/web)
 - API (services/api)
 - Worker (services/worker)
-  - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, and `JOB_QUEUE_LOG_INTERVAL` for retry/backoff logging.
+  - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, `JOB_QUEUE_LOG_INTERVAL`, and `JOB_DEAD_LETTER_QUEUE` for retry/backoff logging and dead-letter handling.
 - DB schema + extensions (packages/db)
 
 Minimal endpoints

@@ -18,7 +18,9 @@ MAX_JOB_RETRIES = int(os.getenv("JOB_MAX_RETRIES", "3"))
 JOB_RETRY_BACKOFF_SECONDS = float(os.getenv("JOB_RETRY_BACKOFF_SECONDS", "2.0"))
 JOB_RETRY_MAX_DELAY = float(os.getenv("JOB_RETRY_MAX_DELAY", "30.0"))
 QUEUE_HEALTH_LOG_INTERVAL = float(os.getenv("JOB_QUEUE_LOG_INTERVAL", "60"))
+JOB_DEAD_LETTER_QUEUE = (os.getenv("JOB_DEAD_LETTER_QUEUE") or "jobs:dead")
 _last_queue_log = 0.0
+DEFAULT_TZ = "UTC"
 
 JobHandler = Callable[[Dict[str, Any]], None]
 JOB_HANDLERS: Dict[str, JobHandler] = {}
@@ -34,25 +36,49 @@ def register_job(kind: str) -> Callable[[JobHandler], JobHandler]:
     return decorator
 
 
+class JobFailed(Exception):
+    def __init__(self, kind: str, task: Dict[str, Any], error: Exception, attempts: int):
+        super().__init__(f"{kind} failed after {attempts} attempts: {error}")
+        self.kind = kind
+        self.task = task
+        self.error = error
+        self.attempts = attempts
+
+
+def log_event(event: str, **fields: Any) -> None:
+    payload = {
+        "ts": datetime.datetime.utcnow().isoformat() + "Z",
+        "event": event,
+        **fields,
+    }
+    try:
+        print(json.dumps(payload, default=str))
+    except Exception:
+        print({"event": event, **fields})
+
+
 def dispatch_job(task: Dict[str, Any]) -> None:
     kind = (task.get("kind") or "").strip().lower()
     handler = JOB_HANDLERS.get(kind)
     if not handler:
-        print(f"Unknown job kind: {kind}")
-        return
+        raise JobFailed(kind or "unknown", task, Exception("unknown_job_kind"), 0)
     attempt = 0
-    while attempt < max(1, MAX_JOB_RETRIES):
+    max_attempts = max(1, MAX_JOB_RETRIES)
+    last_err: Exception | None = None
+    while attempt < max_attempts:
         try:
             handler(task)
             return
         except Exception as err:
             attempt += 1
-            print(f"[WORKER] job {kind} attempt {attempt} failed: {err}")
-            if attempt >= MAX_JOB_RETRIES:
-                raise
+            last_err = err
+            log_event("job.attempt_failed", kind=kind, attempt=attempt, error=str(err))
+            if attempt >= max_attempts:
+                break
             delay = min(JOB_RETRY_MAX_DELAY, JOB_RETRY_BACKOFF_SECONDS * attempt)
             if delay > 0:
                 time.sleep(delay)
+    raise JobFailed(kind, task, last_err or Exception("unknown failure"), attempt)
 
 def health():
     return {"ok": True}
@@ -1357,6 +1383,21 @@ def handle_generate_safety_phrase(task: Dict[str, Any]) -> None:
             conn.commit()
     except Exception as e:
         print("[WORKER] generate_safety_phrase failed:", e)
+        try:
+            with psycopg.connect(db_url) as conn2:
+                _set_org_context(conn2, org_id)
+                fallback = {
+                    "phrase_en": "Let's connect soon to talk about what works best.",
+                    "phrase_es": "Hablemos pronto sobre lo que mejor funciona.",
+                    "rationale": None,
+                }
+                conn2.execute(
+                    "INSERT INTO safety_phrases (org_id, tag, contexts, content_json, status) VALUES (%s, %s, %s, %s, %s)",
+                    (org_id, tag, task.get("contexts") or [], Json(fallback), "draft"),
+                )
+                conn2.commit()
+        except Exception as inner:
+            print("[WORKER] generate_safety_phrase fallback failed:", inner)
 
 
 @register_job("build_one_pager")
@@ -1641,6 +1682,22 @@ def handle_goal_smart(task: Dict[str, Any]) -> None:
             conn.commit()
     except Exception as e:
         print("[WORKER] goal_smart failed:", e)
+        if db_url:
+            try:
+                with psycopg.connect(db_url) as conn2:
+                    _set_org_context(conn2, org_id)
+                    conn2.execute(
+                        """
+                        INSERT INTO goal_rewrites (org_id, child_id, document_id, goal_identifier, rubric_json, rewrite_json, citations_json, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, 'error')
+                        ON CONFLICT (child_id, goal_identifier) DO UPDATE
+                          SET status='error', updated_at=NOW()
+                        """,
+                        (org_id, child_id, document_id, goal_identifier, Json([]), Json({}), Json([]))
+                    )
+                    conn2.commit()
+            except Exception as inner:
+                print("[WORKER] goal_smart fallback failed:", inner)
 
 
 @register_job("build_appeal_kit")
@@ -1865,7 +1922,7 @@ def handle_prep_recommendations(task: Dict[str, Any]) -> None:
             print("[WORKER] prep_recommendations error mark failed:", inner)
 def run():
     global _last_queue_log
-    print("Worker starting; listening on Redis LIST 'jobs'.")
+    log_event("worker.start", queue="jobs", retries=MAX_JOB_RETRIES)
     start_health_server()
     while True:
         job = r.blpop("jobs", timeout=5)
@@ -1874,35 +1931,51 @@ def run():
             if now - _last_queue_log >= QUEUE_HEALTH_LOG_INTERVAL:
                 try:
                     depth = r.llen("jobs")
-                    print(f"[WORKER] queue depth={depth}")
+                    log_event("queue.depth", queue="jobs", depth=depth)
                 except Exception as depth_err:
-                    print("[WORKER] queue depth check failed:", depth_err)
+                    log_event("queue.depth_error", error=str(depth_err))
                 _last_queue_log = now
             try:
                 notify_tick()
             except Exception as tick_err:
-                print("[WORKER] notify tick failed:", tick_err)
+                log_event("notify.error", error=str(tick_err))
             continue
         _, payload = job
         try:
             task = json.loads(payload)
         except Exception as e:
-            print("Invalid job payload", e)
+            log_event("job.payload_error", error=str(e))
             continue
         kind = (task.get("kind") or "").lower()
         job_id = task.get("job_id")
         org_id = task.get("org_id")
-        print(f"[WORKER] processing job kind={kind} job_id={job_id}")
+        log_event("job.start", kind=kind, job_id=job_id, org_id=org_id)
         try:
             dispatch_job(task)
+        except JobFailed as jf:
+            log_event("job.failed", kind=jf.kind, job_id=job_id, attempts=jf.attempts, error=str(jf.error))
+            try:
+                _patch_job(job_id, jf.kind or "unknown", "error", org_id, str(jf.error)[:400])
+            except Exception as patch_err:
+                log_event("job.patch_error", kind=jf.kind, job_id=job_id, error=str(patch_err))
+            dead_payload = dict(jf.task)
+            dead_payload["failed_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+            dead_payload["error"] = str(jf.error)
+            dead_payload["attempts"] = jf.attempts
+            dead_payload.setdefault("kind", jf.kind)
+            try:
+                r.rpush(JOB_DEAD_LETTER_QUEUE, json.dumps(dead_payload, default=str))
+                log_event("job.dead_letter", queue=JOB_DEAD_LETTER_QUEUE, kind=jf.kind, job_id=job_id)
+            except Exception as dead_err:
+                log_event("job.dead_letter_error", queue=JOB_DEAD_LETTER_QUEUE, kind=jf.kind, job_id=job_id, error=str(dead_err))
         except Exception as e:
-            print("Job failed:", e)
+            log_event("job.crash", kind=kind, job_id=job_id, error=str(e))
             try:
                 _patch_job(job_id, kind or "unknown", "error", org_id, str(e)[:400])
             except Exception as patch_err:
-                print("[WORKER] failed to mark job error:", patch_err)
+                log_event("job.patch_error", kind=kind, job_id=job_id, error=str(patch_err))
         else:
-            print(f"[WORKER] job kind={kind} job_id={job_id} completed")
+            log_event("job.success", kind=kind, job_id=job_id, org_id=org_id)
 
 
 if __name__ == "__main__":
