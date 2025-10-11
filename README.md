@@ -125,6 +125,7 @@ Retention
 Observability
 
 - See `docs/OBSERVABILITY.md` for logging, queue metrics, and alerting guidelines.
+- See `docs/OPERATIONS_CHECKLIST.md` for production monitoring, cron jobs, and post-release steps.
 
 Compliance
 
