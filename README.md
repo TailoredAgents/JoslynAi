@@ -101,11 +101,14 @@ Telemetry & memory
 
 ## Testing
 
-- End-to-end tests (Playwright) cover onboarding, ask/brief, letters, and cross-tenant isolation.
+- API unit tests: `pnpm --filter @joslyn-ai/api test`
+- Worker unit tests: `python -m pytest services/worker/tests`
+- End-to-end tests (Playwright) cover onboarding, ask/brief, letters, and negative uploads.
 - Run locally (with the stack up and `OPENAI_API_KEY` set):
   - `pnpm dlx playwright install`
   - `pnpm dlx playwright test -c e2e`
   - Or: `npx playwright test -c e2e`
+- See `docs/TESTING.md` for detailed guidance and CI recommendations.
 
 ## Notable endpoints (dev)
 

@@ -7,3 +7,4 @@ psycopg[binary]
 boto3
 requests
 openai
+pytest

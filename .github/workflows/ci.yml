@@ -47,3 +47,18 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      - name: Run API unit tests
+        run: pnpm --filter @joslyn-ai/api test
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install worker test dependencies
+        run: pip install pytest
+
+      - name: Run worker unit tests
+        env:
+          PYTHONPATH: services/worker/src
+        run: python -m pytest services/worker/tests
