@@ -74,6 +74,10 @@ Tasks
 - Secrets in Render: `NEXTAUTH_SECRET`, `JWT_SECRET`, `ADMIN_API_KEY`, `INTERNAL_API_KEY`, `OPENAI_API_KEY`, SMTP creds.
 - Monitoring/health checks:
   - Web `/` (200), API `/health` (200), Worker `/health` (200 via internal health).
+- Worker metrics scrape: configure dashboards/alerts for `http://<worker-host>:9090/metrics` (retry spikes, latency, queue depth).
+- Schedule retention jobs:
+  - `make dead-letter-trim` (with `REDIS_URL`) via cron/Render to keep `jobs:dead` bounded.
+  - Database purge (`pnpm --filter @joslyn-ai/db exec prisma db execute --file scripts/purge_ephemeral.sql`).
 - Incident runbooks for S3/SMTP outage fallbacks.
 
 Acceptance

@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web purge tasks-cleanup
+.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web purge tasks-cleanup dead-letter-trim
 
 up:
 	docker compose up -d --build
@@ -44,3 +44,7 @@ purge:
 tasks-cleanup:
 	@if [ -z "$${DATABASE_URL}" ]; then echo "DATABASE_URL required for tasks-cleanup target"; exit 1; fi
 	pnpm --filter @joslyn-ai/db exec prisma db execute --file packages/db/scripts/tasks_cleanup.sql --schema packages/db/prisma/schema.prisma --url "$${DATABASE_URL}"
+
+dead-letter-trim:
+	@if [ -z "$${REDIS_URL}" ]; then echo "REDIS_URL required for dead-letter-trim target"; exit 1; fi
+	python services/worker/scripts/trim_dead_letter.py --redis-url "$${REDIS_URL}" --queue "$${JOB_DEAD_LETTER_QUEUE:-jobs:dead}" --keep "$${DEAD_LETTER_KEEP:-100}"

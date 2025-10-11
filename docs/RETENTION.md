@@ -20,11 +20,15 @@ This checklist outlines how to keep Joslyn AI storage tidy and compliant once do
 ## Redis / Queue
 
 - Configure Redis with an `allkeys-lru` policy or set key-specific TTLs for transient data (`jobs`, cache entries).
-- The worker now pushes permanently failed jobs to the `jobs:dead` list. Monitor and trim this list (e.g., keep only the most recent 1 000 entries).
+- The worker pushes permanently failed jobs to the `jobs:dead` list. Monitor and trim this list (e.g., keep only the most recent 1,000 entries). Use the helper:
+  ```bash
+  REDIS_URL=redis://localhost:6379/0 make dead-letter-trim
+  ```
+  Optional flags (`DEAD_LETTER_KEEP`, `JOB_DEAD_LETTER_QUEUE`, `--dry-run`) make it easy to schedule via cron or Render jobs.
 
 ## Backups
 
-- Nightly Postgres snapshot (managed DB or `pg_dump`) retained for ≥30 days.
+- Nightly Postgres snapshot (managed DB or `pg_dump`) retained for 30 days.
 - Weekly S3 bucket backup or cross-region replication if regulatory requirements mandate it.
 
 ## Operational Checklist
