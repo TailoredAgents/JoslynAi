@@ -2,6 +2,8 @@ import types
 import sys
 
 import pytest
+from src.jobs.registry import registry as job_registry  # type: ignore
+from src.metrics import metrics as worker_metrics  # type: ignore
 
 for _name in ("fitz", "ocrmypdf", "pytesseract", "pypdfium2"):
     if _name not in sys.modules:
@@ -49,19 +51,17 @@ from src import main  # type: ignore
 
 @pytest.fixture(autouse=True)
 def reset_handlers(monkeypatch):
-    original_handlers = main.JOB_HANDLERS.copy()
+    original_handlers = dict(job_registry.handlers)
     original_retries = main.MAX_JOB_RETRIES
     original_backoff = main.JOB_RETRY_BACKOFF_SECONDS
     original_max_delay = main.JOB_RETRY_MAX_DELAY
-    def fake_sleep(_seconds: float) -> None:
-        return None
-    monkeypatch.setattr(main.time, "sleep", fake_sleep)
     yield
-    main.JOB_HANDLERS.clear()
-    main.JOB_HANDLERS.update(original_handlers)
+    job_registry.clear()
+    job_registry.update(original_handlers)
     main.MAX_JOB_RETRIES = original_retries
     main.JOB_RETRY_BACKOFF_SECONDS = original_backoff
     main.JOB_RETRY_MAX_DELAY = original_max_delay
+    worker_metrics.reset()
 
 
 def test_dispatch_job_success():
@@ -71,7 +71,13 @@ def test_dispatch_job_success():
     def handler(task):
         calls.append(task)
 
-    main.dispatch_job({"kind": "success", "payload": 1})
+    main.dispatch_job(
+        {"kind": "success", "payload": 1},
+        max_attempts=main.MAX_JOB_RETRIES,
+        backoff_seconds=main.JOB_RETRY_BACKOFF_SECONDS,
+        max_delay_seconds=main.JOB_RETRY_MAX_DELAY,
+        sleep_fn=lambda _seconds: None,
+    )
     assert calls == [{"kind": "success", "payload": 1}]
 
 
@@ -85,7 +91,13 @@ def test_dispatch_job_retries_and_failure(monkeypatch):
 
     main.MAX_JOB_RETRIES = 2
     with pytest.raises(main.JobFailed) as exc:
-        main.dispatch_job({"kind": "flaky"})
+        main.dispatch_job(
+            {"kind": "flaky"},
+            max_attempts=main.MAX_JOB_RETRIES,
+            backoff_seconds=main.JOB_RETRY_BACKOFF_SECONDS,
+            max_delay_seconds=main.JOB_RETRY_MAX_DELAY,
+            sleep_fn=lambda _seconds: None,
+        )
 
     assert exc.value.kind == "flaky"
     assert exc.value.attempts == 2

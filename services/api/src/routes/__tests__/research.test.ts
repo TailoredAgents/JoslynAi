@@ -88,7 +88,9 @@ describe("research routes", () => {
 
   it("queues a research summary for a document", async () => {
     const fastify = Fastify();
-    mockDocumentsFindUnique.mockResolvedValue({ id: "doc-2", child_id: "child-1", org_id: "org-123" });
+    const document = { id: "doc-2", child_id: "child-1", org_id: "org-123" };
+    mockDocumentsFindUnique.mockResolvedValue(document);
+    mockDocumentsFindFirst.mockResolvedValue(document);
 
     const routes = (await routesImport()).default;
     await routes(fastify as any);

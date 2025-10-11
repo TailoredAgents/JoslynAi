@@ -26,6 +26,7 @@ ALTER TABLE IF EXISTS glossaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS share_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS child_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS org_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS org_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS invites ENABLE ROW LEVEL SECURITY;
@@ -65,7 +66,7 @@ BEGIN
     'documents','doc_spans','iep_extract','iep_diffs','recommendations','denial_explanations',
     'goal_rewrites','advocacy_outlines','research_summaries','appeal_kits','appeal_kit_items','one_pagers','copilot_conversations',
     'deadlines','letters','claims','eobs','next_best_steps','notifications','agent_runs','glossaries',
-    'share_links','child_profile','events','org_settings','org_members','invites','job_runs','entitlements'
+    'share_links','child_profile','events','tasks','org_settings','org_members','invites','job_runs','entitlements'
   ])
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS rls_%I ON %I', t, t);

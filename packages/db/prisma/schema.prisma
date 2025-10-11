@@ -423,6 +423,22 @@ model events {
   @@index([org_id, type])
 }
 
+model tasks {
+  id           String   @id @default(uuid()) @db.Uuid
+  org_id       String?  @db.Uuid
+  child_id     String   @db.Uuid
+  title        String
+  status       String   @default("open")
+  metadata     Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  completed_at DateTime?
+
+  @@index([org_id, status])
+  @@index([child_id, status])
+  @@map("tasks")
+}
+
 model org_settings {
   id          String   @id @default(uuid()) @db.Uuid
   org_id      String   @unique
@@ -445,6 +461,7 @@ model org_members {
   created_at DateTime @default(now())
 
   @@index([org_id, user_id])
+  @@unique([org_id, user_id])
 }
 
 model invites {

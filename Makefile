@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web purge
+.PHONY: up down restart ps logs logs-api logs-web logs-worker migrate dev-api dev-web purge tasks-cleanup
 
 up:
 	docker compose up -d --build
@@ -41,3 +41,6 @@ purge:
 	PGOPTIONS="-c joslyn.retention_days=$${RETENTION_DAYS:-90}" \
 		pnpm --filter @joslyn-ai/db exec prisma db execute --file scripts/purge_ephemeral.sql --schema packages/db/prisma/schema.prisma --url "$${DATABASE_URL}"
 
+tasks-cleanup:
+	@if [ -z "$${DATABASE_URL}" ]; then echo "DATABASE_URL required for tasks-cleanup target"; exit 1; fi
+	pnpm --filter @joslyn-ai/db exec prisma db execute --file packages/db/scripts/tasks_cleanup.sql --schema packages/db/prisma/schema.prisma --url "$${DATABASE_URL}"

@@ -48,6 +48,7 @@ import feedbackRoutes from "./routes/feedback.js";
 import consentRoutes from "./routes/consent.js";
 import realtimeRoutes from "./realtime/index.js";
 import whoamiRoutes from "./routes/whoami.js";
+import orgRoutes from "./routes/orgs.js";
 import internalMetrics from "./routes/internal/metrics.js";
 
 const app = Fastify({
@@ -154,6 +155,7 @@ await app.register(realtimeRoutes);
 await app.register(feedbackRoutes);
 await app.register(consentRoutes);
 await app.register(whoamiRoutes);
+await app.register(orgRoutes);
 
 app.setErrorHandler((err: any, req, reply) => {
   if (err?.statusCode === 400 && /image data/i.test(String(err?.message))) {

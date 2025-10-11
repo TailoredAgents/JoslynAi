@@ -5,6 +5,7 @@ const mockFindMany = vi.fn();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
 const mockFindUnique = vi.fn();
+const mockFindFirst = vi.fn();
 const mockDocumentsFindFirst = vi.fn();
 const mockDocumentsFindUnique = vi.fn();
 const mockEnqueue = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("../../lib/db.js", () => ({
       create: mockCreate,
       update: mockUpdate,
       findUnique: mockFindUnique,
+      findFirst: mockFindFirst,
     },
     documents: {
       findFirst: mockDocumentsFindFirst,
@@ -43,6 +45,7 @@ describe("advocacy routes", () => {
     mockCreate.mockReset();
     mockUpdate.mockReset();
     mockFindUnique.mockReset();
+    mockFindFirst.mockReset();
     mockDocumentsFindFirst.mockReset();
     mockDocumentsFindUnique.mockReset();
     mockEnqueue.mockReset();
@@ -114,7 +117,7 @@ describe("advocacy routes", () => {
 
   it("regenerates an existing outline", async () => {
     const fastify = Fastify();
-    mockFindUnique.mockResolvedValue({
+    mockFindFirst.mockResolvedValue({
       id: "outline-3",
       child_id: "child-1",
       outline_kind: "mediation",

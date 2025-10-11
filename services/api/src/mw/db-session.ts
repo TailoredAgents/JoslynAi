@@ -14,7 +14,9 @@ export default async function dbSession(app: FastifyInstance) {
 
     const user: any = (req as any).user || {};
     const userId = typeof user?.id === "string" ? user.id : undefined;
-    const claimOrg = (user?.org_id && String(user.org_id).trim()) || "";
+    const claimOrgRaw = (user?.org_id && String(user.org_id).trim()) || "";
+    const claimOrg = isUuid(claimOrgRaw) ? claimOrgRaw : "";
+    const isBootstrapRoute = rawUrl.startsWith("/orgs/bootstrap");
 
     if (!resolved && internalOk && isInternalRoute) {
       const hdrOrg = ((req.headers["x-org-id"] as string) || "").trim();
@@ -23,7 +25,11 @@ export default async function dbSession(app: FastifyInstance) {
       }
     }
 
-    if (!resolved && userId && isUuid(claimOrg)) {
+    if (!resolved && isBootstrapRoute && claimOrg) {
+      resolved = claimOrg;
+    }
+
+    if (!resolved && userId && claimOrg) {
       try {
         const m = await (prisma as any).org_members.findFirst({ where: { user_id: userId, org_id: claimOrg }, select: { org_id: true } });
         if (m?.org_id) resolved = m.org_id;

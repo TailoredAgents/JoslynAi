@@ -99,6 +99,7 @@ WHERE NOT EXISTS (
 -- Ensure needed uniques exist for idempotent upserts
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_children_org_slug ON children (org_id, slug);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_entitlements_org ON entitlements (org_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_org_members_org_user ON org_members (org_id, user_id);
 
 INSERT INTO children (id, org_id, name, school_name, dob, created_at, slug)
 VALUES (gen_random_uuid(), '00000000-0000-4000-8000-000000000000', 'Demo Child', NULL, NULL, now(), 'demo-child')

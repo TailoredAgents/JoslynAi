@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import Stripe from "stripe";
 import { prisma } from "../lib/db.js";
+import { FEATURES_BY_PLAN, getFeaturesForPlan } from "../lib/entitlements.js";
 
 export default async function routes(app: FastifyInstance) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -39,17 +40,6 @@ export default async function routes(app: FastifyInstance) {
       if (url.origin === allowedOrigin) return url.toString();
     } catch {}
     return fallback;
-  };
-
-  // Feature matrices per plan (nickname on Stripe Price)
-  // Plans we support: basic ($9), pro ($29)
-  const FEATURES_BY_PLAN: Record<string, any> = {
-    free: { ask: true, brief: true, letters: { render: false, send: false }, smart_attachments: false, chat: false },
-    basic: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false, chat: true },
-    pro: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true, chat: true },
-    // Legacy plans map to closest current offering
-    business: { ask: true, brief: true, letters: { render: true, send: true }, smart_attachments: true, chat: true },
-    starter: { ask: true, brief: true, letters: { render: true, send: false }, smart_attachments: false, chat: true },
   };
 
   // Whitelisted price IDs by plan from env; prevents client from selecting arbitrary prices
@@ -166,7 +156,7 @@ export default async function routes(app: FastifyInstance) {
           if (event.type === "customer.subscription.deleted") {
             plan = "free";
           }
-          const features = FEATURES_BY_PLAN[plan] || FEATURES_BY_PLAN["starter"];
+          const features = getFeaturesForPlan(plan);
           await (prisma as any).entitlements.upsert({
             where: { org_id },
             update: { plan, features_json: features },

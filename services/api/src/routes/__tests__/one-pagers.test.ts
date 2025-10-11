@@ -5,6 +5,7 @@ const mockFindMany = vi.fn();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
 const mockFindUnique = vi.fn();
+const mockFindFirst = vi.fn();
 const mockDocumentsFindFirst = vi.fn();
 const mockShareCreate = vi.fn();
 const mockEnqueue = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("../../lib/db.js", () => ({
       create: mockCreate,
       update: mockUpdate,
       findUnique: mockFindUnique,
+      findFirst: mockFindFirst,
     },
     documents: {
       findFirst: mockDocumentsFindFirst,
@@ -48,6 +50,7 @@ describe("one-pagers routes", () => {
     mockCreate.mockReset();
     mockUpdate.mockReset();
     mockFindUnique.mockReset();
+    mockFindFirst.mockReset();
     mockDocumentsFindFirst.mockReset();
     mockShareCreate.mockReset();
     mockEnqueue.mockReset();
@@ -121,7 +124,7 @@ describe("one-pagers routes", () => {
 
   it("regenerates a one-pager", async () => {
     const fastify = Fastify();
-    mockFindUnique.mockResolvedValue({
+    mockFindFirst.mockResolvedValue({
       id: "op-3",
       child_id: "child-1",
       audience: "teacher",
@@ -163,7 +166,7 @@ describe("one-pagers routes", () => {
 
   it("publishes a one-pager and returns share data", async () => {
     const fastify = Fastify();
-    mockFindUnique.mockResolvedValueOnce({
+    mockFindFirst.mockResolvedValueOnce({
       id: "op-4",
       child_id: "child-1",
       audience: "teacher",

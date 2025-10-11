@@ -9,7 +9,9 @@ import psycopg
 from psycopg.types.json import Json
 from openai import OpenAI
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable, Dict, Any
+from typing import Dict, Any
+from src.jobs.registry import register_job, dispatch_job, JobFailed, registry
+from src.metrics import metrics
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 r = redis.from_url(REDIS_URL, decode_responses=True)
@@ -22,32 +24,16 @@ JOB_DEAD_LETTER_QUEUE = (os.getenv("JOB_DEAD_LETTER_QUEUE") or "jobs:dead")
 _last_queue_log = 0.0
 DEFAULT_TZ = "UTC"
 
-JobHandler = Callable[[Dict[str, Any]], None]
-JOB_HANDLERS: Dict[str, JobHandler] = {}
+JOB_HANDLERS = registry.handlers
 
-
-def register_job(kind: str) -> Callable[[JobHandler], JobHandler]:
-    kind_key = (kind or "").strip().lower()
-
-    def decorator(fn: JobHandler) -> JobHandler:
-        JOB_HANDLERS[kind_key] = fn
-        return fn
-
-    return decorator
-
-
-class JobFailed(Exception):
-    def __init__(self, kind: str, task: Dict[str, Any], error: Exception, attempts: int):
-        super().__init__(f"{kind} failed after {attempts} attempts: {error}")
-        self.kind = kind
-        self.task = task
-        self.error = error
-        self.attempts = attempts
+def utc_now_iso() -> str:
+    """Return an ISO8601 string in UTC with a trailing Z suffix."""
+    return datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
 
 def log_event(event: str, **fields: Any) -> None:
     payload = {
-        "ts": datetime.datetime.utcnow().isoformat() + "Z",
+        "ts": utc_now_iso(),
         "event": event,
         **fields,
     }
@@ -57,29 +43,6 @@ def log_event(event: str, **fields: Any) -> None:
         print({"event": event, **fields})
 
 
-def dispatch_job(task: Dict[str, Any]) -> None:
-    kind = (task.get("kind") or "").strip().lower()
-    handler = JOB_HANDLERS.get(kind)
-    if not handler:
-        raise JobFailed(kind or "unknown", task, Exception("unknown_job_kind"), 0)
-    attempt = 0
-    max_attempts = max(1, MAX_JOB_RETRIES)
-    last_err: Exception | None = None
-    while attempt < max_attempts:
-        try:
-            handler(task)
-            return
-        except Exception as err:
-            attempt += 1
-            last_err = err
-            log_event("job.attempt_failed", kind=kind, attempt=attempt, error=str(err))
-            if attempt >= max_attempts:
-                break
-            delay = min(JOB_RETRY_MAX_DELAY, JOB_RETRY_BACKOFF_SECONDS * attempt)
-            if delay > 0:
-                time.sleep(delay)
-    raise JobFailed(kind, task, last_err or Exception("unknown failure"), attempt)
-
 def health():
     return {"ok": True}
 
@@ -87,6 +50,14 @@ class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             body = b'{"ok": true}'
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/metrics":
+            snapshot = metrics.snapshot()
+            body = json.dumps(snapshot).encode("utf-8")
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
@@ -1782,7 +1753,7 @@ def handle_build_appeal_kit(task: Dict[str, Any]) -> None:
             metadata = kit[5] or {}
             metadata["appeal_recommended"] = bool(explanation_json.get("appeal_recommended"))
             metadata["appeal_reason"] = appeal_reason
-            metadata["generated_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+            metadata["generated_at"] = utc_now_iso()
             conn.execute(
                 "UPDATE appeal_kits SET metadata_json=%s, checklist_json=%s, citations_json=%s, status='ready', updated_at=NOW() WHERE id=%s",
                 (Json(metadata), Json(checklist), Json(citations), kit_id)
@@ -1931,6 +1902,7 @@ def run():
             if now - _last_queue_log >= QUEUE_HEALTH_LOG_INTERVAL:
                 try:
                     depth = r.llen("jobs")
+                    metrics.record_queue_depth("jobs", depth)
                     log_event("queue.depth", queue="jobs", depth=depth)
                 except Exception as depth_err:
                     log_event("queue.depth_error", error=str(depth_err))
@@ -1950,16 +1922,26 @@ def run():
         job_id = task.get("job_id")
         org_id = task.get("org_id")
         log_event("job.start", kind=kind, job_id=job_id, org_id=org_id)
+        start = time.perf_counter()
         try:
-            dispatch_job(task)
+            dispatch_job(
+                task,
+                max_attempts=MAX_JOB_RETRIES,
+                backoff_seconds=JOB_RETRY_BACKOFF_SECONDS,
+                max_delay_seconds=JOB_RETRY_MAX_DELAY,
+                sleep_fn=time.sleep,
+                log_fn=log_event,
+                metrics=metrics,
+            )
         except JobFailed as jf:
+            metrics.record_duration(kind, time.perf_counter() - start)
             log_event("job.failed", kind=jf.kind, job_id=job_id, attempts=jf.attempts, error=str(jf.error))
             try:
                 _patch_job(job_id, jf.kind or "unknown", "error", org_id, str(jf.error)[:400])
             except Exception as patch_err:
                 log_event("job.patch_error", kind=jf.kind, job_id=job_id, error=str(patch_err))
             dead_payload = dict(jf.task)
-            dead_payload["failed_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+            dead_payload["failed_at"] = utc_now_iso()
             dead_payload["error"] = str(jf.error)
             dead_payload["attempts"] = jf.attempts
             dead_payload.setdefault("kind", jf.kind)
@@ -1969,12 +1951,14 @@ def run():
             except Exception as dead_err:
                 log_event("job.dead_letter_error", queue=JOB_DEAD_LETTER_QUEUE, kind=jf.kind, job_id=job_id, error=str(dead_err))
         except Exception as e:
+            metrics.record_duration(kind, time.perf_counter() - start)
             log_event("job.crash", kind=kind, job_id=job_id, error=str(e))
             try:
                 _patch_job(job_id, kind or "unknown", "error", org_id, str(e)[:400])
             except Exception as patch_err:
                 log_event("job.patch_error", kind=kind, job_id=job_id, error=str(patch_err))
         else:
+            metrics.record_duration(kind, time.perf_counter() - start)
             log_event("job.success", kind=kind, job_id=job_id, org_id=org_id)
 
 
