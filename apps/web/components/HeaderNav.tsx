@@ -20,6 +20,7 @@ const appNav = [
   { href: "/recommendations", label: "Recommendations" },
   { href: "/research", label: "Research" },
   { href: "/one-pagers", label: "One-pagers" },
+  { href: "/settings/billing", label: "Billing" },
 ];
 
 export default function HeaderNav() {
@@ -33,9 +34,12 @@ export default function HeaderNav() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const envKey = undefined as any;
+    const envKey = (process.env.NEXT_PUBLIC_ADMIN_API_KEY || "").trim();
     const localKey = typeof window !== "undefined" ? localStorage.getItem("adminKey") : null;
-    setShowAdmin(!!envKey || !!localKey);
+    if (envKey && typeof window !== "undefined") {
+      localStorage.setItem("adminKey", envKey);
+    }
+    setShowAdmin(Boolean(envKey || localKey));
   }, []);
 
   useEffect(() => {

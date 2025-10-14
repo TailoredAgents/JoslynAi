@@ -46,11 +46,12 @@ Set `DEAD_LETTER_KEEP` or `JOB_DEAD_LETTER_QUEUE` env vars if you need non-defau
 
 1. Validate environment variables in Render align with `.env.example`.
 2. Confirm `RUN_MIGRATIONS=true` on the API service and that the last boot log shows schema/extensions applied.
-3. Verify `JOSLYN_API_ORIGIN` (web) and `API_URL` (worker) reference the HTTPS API hostname—no localhost or HTTP fallbacks.
+3. Verify `JOSLYN_API_ORIGIN` (web) and `API_URL` (worker) reference the HTTPS API hostname-no localhost or HTTP fallbacks.
 4. Run `pnpm --filter @joslyn-ai/api test` and `python -m pytest services/worker/tests`.
 5. Run `pnpm -r build` and `pnpm -r typecheck` locally or in CI.
 6. Confirm health endpoints and `/metrics` respond from staging.
 7. Review dashboards (queue depth, retries, latency) for anomalies.
+8. Visit `/settings/billing`, run a test checkout, and confirm the Stripe redirect returns successfully.
 
 ## Post-Release Checklist
 

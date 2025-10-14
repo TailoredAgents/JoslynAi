@@ -1,4 +1,4 @@
-Joslyn AI — Monorepo
+Joslyn AI - Monorepo
 
 Overview
 
@@ -19,9 +19,9 @@ Getting Started
 Local dev (Docker Compose)
 
 - Quick start with Makefile:
-  - `make up` — build and start Postgres, Redis, MinIO, Mailhog, API, Web, Worker
-  - `make logs-api` — tail API logs (or `make logs`, `make logs-web`, `make logs-worker`)
-  - `make down` — stop everything
+  - `make up` - build and start Postgres, Redis, MinIO, Mailhog, API, Web, Worker
+  - `make logs-api` - tail API logs (or `make logs`, `make logs-web`, `make logs-worker`)
+  - `make down` - stop everything
 - Open Web: http://localhost:3000
 - API Health: http://localhost:8080/health
 - Mailhog (dev email inbox): http://localhost:8025
@@ -52,9 +52,9 @@ Admin (dev)
 
 - Set `NEXT_PUBLIC_ADMIN_API_KEY` in `.env` (example provided).
 - Admin menu exposes:
-  - Rules — edit timeline rules (jurisdiction, kind, delta_days, description, source)
-  - Deadlines — list/filter deadlines
-  - Usage — feature metrics and model cost aggregation
+  - Rules - edit timeline rules (jurisdiction, kind, delta_days, description, source)
+  - Deadlines - list/filter deadlines
+  - Usage - feature metrics and model cost aggregation
 
 Services
 
@@ -63,6 +63,7 @@ Services
 - Worker (services/worker)
   - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, `JOB_QUEUE_LOG_INTERVAL`, and `JOB_DEAD_LETTER_QUEUE` for retry/backoff logging and dead-letter handling.
 - DB schema + extensions (packages/db)
+- Mobile preview (apps/mobile) - native shell that points to the full web workspace while mobile features are in design.
 
 Minimal endpoints
 
