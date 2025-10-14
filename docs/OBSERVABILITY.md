@@ -9,7 +9,7 @@
 ## Metrics Endpoints
 
 - GET `/internal/metrics/queues` (requires `x-internal-key`) returns Redis queue depths and `job_runs` status counts.
-- Worker health: GET `http://<worker-host>:9090/health`.
+- Worker health: GET `http://<worker-host>:9090/health` (returns `200` with state snapshot; responds `503` with reasons if the runner is stalled, backlogged, or experiencing consecutive failures).
 - Worker metrics: GET `http://<worker-host>:9090/metrics` for JSON counters and latency aggregates emitted by the job dispatcher. Sample shape:
   ```json
   {

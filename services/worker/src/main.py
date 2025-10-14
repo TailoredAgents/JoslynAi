@@ -1,4 +1,4 @@
-import os, json, threading, datetime, hashlib, time
+import os, json, datetime, hashlib, time
 import redis
 from src.ocr import process_pdf
 from src.index import embed_and_store, _patch_job
@@ -8,10 +8,12 @@ from src.notify import tick as notify_tick
 import psycopg
 from psycopg.types.json import Json
 from openai import OpenAI
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Dict, Any
 from src.jobs.registry import register_job, dispatch_job, JobFailed, registry
 from src.metrics import metrics
+from src.runner import JobRunner
+from src.state import WorkerState
+from src.httpd import start_health_server
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 r = redis.from_url(REDIS_URL, decode_responses=True)
@@ -21,7 +23,11 @@ JOB_RETRY_BACKOFF_SECONDS = float(os.getenv("JOB_RETRY_BACKOFF_SECONDS", "2.0"))
 JOB_RETRY_MAX_DELAY = float(os.getenv("JOB_RETRY_MAX_DELAY", "30.0"))
 QUEUE_HEALTH_LOG_INTERVAL = float(os.getenv("JOB_QUEUE_LOG_INTERVAL", "60"))
 JOB_DEAD_LETTER_QUEUE = (os.getenv("JOB_DEAD_LETTER_QUEUE") or "jobs:dead")
-_last_queue_log = 0.0
+QUEUE_NAME = os.getenv("JOB_QUEUE_NAME", "jobs")
+QUEUE_POLL_TIMEOUT = int(os.getenv("JOB_QUEUE_POLL_TIMEOUT", "5"))
+JOB_RUNNER_FAILURE_SLEEP = float(os.getenv("JOB_RUNNER_FAILURE_SLEEP", "1.0"))
+JOB_STALL_THRESHOLD_SECONDS = float(os.getenv("JOB_STALL_THRESHOLD_SECONDS", "300"))
+JOB_FAILURE_THRESHOLD = int(os.getenv("JOB_FAILURE_THRESHOLD", "5"))
 DEFAULT_TZ = "UTC"
 
 JOB_HANDLERS = registry.handlers
@@ -42,37 +48,6 @@ def log_event(event: str, **fields: Any) -> None:
     except Exception:
         print({"event": event, **fields})
 
-
-def health():
-    return {"ok": True}
-
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/health":
-            body = b'{"ok": true}'
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        elif self.path == "/metrics":
-            snapshot = metrics.snapshot()
-            body = json.dumps(snapshot).encode("utf-8")
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-def start_health_server():
-    port = int(os.getenv("PORT", "9090"))
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    print(f"Health server listening on :{port}")
 
 def _set_org_context(conn, org_id):
     if not org_id:
@@ -776,9 +751,9 @@ def handle_ingest_pdf(task: Dict[str, Any]) -> None:
             })
     for payload in followups:
         try:
-           r.rpush("jobs", json.dumps(payload))
+            r.rpush(QUEUE_NAME, json.dumps(payload))
         except Exception as enqueue_err:
-           print("[WORKER] enqueue followup failed:", enqueue_err)
+            print("[WORKER] enqueue followup failed:", enqueue_err)
 
 
 @register_job("extract_iep")
@@ -1892,74 +1867,29 @@ def handle_prep_recommendations(task: Dict[str, Any]) -> None:
         except Exception as inner:
             print("[WORKER] prep_recommendations error mark failed:", inner)
 def run():
-    global _last_queue_log
-    log_event("worker.start", queue="jobs", retries=MAX_JOB_RETRIES)
-    start_health_server()
-    while True:
-        job = r.blpop("jobs", timeout=5)
-        if not job:
-            now = time.time()
-            if now - _last_queue_log >= QUEUE_HEALTH_LOG_INTERVAL:
-                try:
-                    depth = r.llen("jobs")
-                    metrics.record_queue_depth("jobs", depth)
-                    log_event("queue.depth", queue="jobs", depth=depth)
-                except Exception as depth_err:
-                    log_event("queue.depth_error", error=str(depth_err))
-                _last_queue_log = now
-            try:
-                notify_tick()
-            except Exception as tick_err:
-                log_event("notify.error", error=str(tick_err))
-            continue
-        _, payload = job
-        try:
-            task = json.loads(payload)
-        except Exception as e:
-            log_event("job.payload_error", error=str(e))
-            continue
-        kind = (task.get("kind") or "").lower()
-        job_id = task.get("job_id")
-        org_id = task.get("org_id")
-        log_event("job.start", kind=kind, job_id=job_id, org_id=org_id)
-        start = time.perf_counter()
-        try:
-            dispatch_job(
-                task,
-                max_attempts=MAX_JOB_RETRIES,
-                backoff_seconds=JOB_RETRY_BACKOFF_SECONDS,
-                max_delay_seconds=JOB_RETRY_MAX_DELAY,
-                sleep_fn=time.sleep,
-                log_fn=log_event,
-                metrics=metrics,
-            )
-        except JobFailed as jf:
-            metrics.record_duration(kind, time.perf_counter() - start)
-            log_event("job.failed", kind=jf.kind, job_id=job_id, attempts=jf.attempts, error=str(jf.error))
-            try:
-                _patch_job(job_id, jf.kind or "unknown", "error", org_id, str(jf.error)[:400])
-            except Exception as patch_err:
-                log_event("job.patch_error", kind=jf.kind, job_id=job_id, error=str(patch_err))
-            dead_payload = dict(jf.task)
-            dead_payload["failed_at"] = utc_now_iso()
-            dead_payload["error"] = str(jf.error)
-            dead_payload["attempts"] = jf.attempts
-            dead_payload.setdefault("kind", jf.kind)
-            try:
-                r.rpush(JOB_DEAD_LETTER_QUEUE, json.dumps(dead_payload, default=str))
-                log_event("job.dead_letter", queue=JOB_DEAD_LETTER_QUEUE, kind=jf.kind, job_id=job_id)
-            except Exception as dead_err:
-                log_event("job.dead_letter_error", queue=JOB_DEAD_LETTER_QUEUE, kind=jf.kind, job_id=job_id, error=str(dead_err))
-        except Exception as e:
-            metrics.record_duration(kind, time.perf_counter() - start)
-            log_event("job.crash", kind=kind, job_id=job_id, error=str(e))
-            try:
-                _patch_job(job_id, kind or "unknown", "error", org_id, str(e)[:400])
-            except Exception as patch_err:
-                log_event("job.patch_error", kind=kind, job_id=job_id, error=str(patch_err))
-        else:
-            metrics.record_duration(kind, time.perf_counter() - start)
-            log_event("job.success", kind=kind, job_id=job_id, org_id=org_id)
+    log_event("worker.start", queue=QUEUE_NAME, retries=MAX_JOB_RETRIES)
+    state = WorkerState(
+        stall_threshold_seconds=JOB_STALL_THRESHOLD_SECONDS,
+        failure_threshold=JOB_FAILURE_THRESHOLD,
+    )
+    start_health_server(state)
+    runner = JobRunner(
+        redis_client=r,
+        state=state,
+        queue_name=QUEUE_NAME,
+        dead_letter_queue=JOB_DEAD_LETTER_QUEUE,
+        max_retries=MAX_JOB_RETRIES,
+        backoff_seconds=JOB_RETRY_BACKOFF_SECONDS,
+        max_delay_seconds=JOB_RETRY_MAX_DELAY,
+        queue_poll_timeout=QUEUE_POLL_TIMEOUT,
+        queue_log_interval=QUEUE_HEALTH_LOG_INTERVAL,
+        failure_sleep_seconds=JOB_RUNNER_FAILURE_SLEEP,
+        dispatch_fn=dispatch_job,
+        patch_job_fn=_patch_job,
+        notify_fn=notify_tick,
+        log_fn=log_event,
+    )
+    runner.run_forever()
 
 
 if __name__ == "__main__":
