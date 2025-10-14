@@ -21,9 +21,9 @@ Use this as a checklist when promoting from local to Render.
 - Deploy all three services. After they boot, copy their external URLs from Render’s dashboard.
 
 5) Post‑deploy URL wiring
-- Web → API: set `JOSLYN_API_ORIGIN` on Web to the API external URL (e.g., `https://iep-ally-api.onrender.com`).
+- Web → API: set `JOSLYN_API_ORIGIN` on Web to the API external URL (e.g., `https://iep-ally-api.onrender.com`). Always use HTTPS so proxied browser calls stay on the same origin.
 - API → Web: set `PUBLIC_BASE_URL` on API to the Web external URL (e.g., `https://iep-ally-web.onrender.com`).
-- Worker → API: set `API_URL` on Worker to the API external URL.
+- Worker → API: set `API_URL` on Worker to the API external URL (HTTPS only). This prevents the worker from falling back to http://localhost.
 - Ensure `INTERNAL_API_KEY` is IDENTICAL on API and Worker (choose a strong value once and reuse).
 - Save, redeploy Web, API, and Worker.
 
@@ -67,6 +67,7 @@ Required
 - `S3_ACCESS_KEY_ID` = access key
 - `S3_SECRET_ACCESS_KEY` = secret key
 - `JWT_SECRET` (or `API_JWT_SECRET`) = reuse the same value provided to the Web service so proxy-signed JWTs validate
+- `RUN_MIGRATIONS` = `true` (default in `render.yaml`) so schema, extensions, and RLS apply automatically at boot
 - `ADMIN_API_KEY` = strong random string (Render can generate)
 - `INTERNAL_API_KEY` = strong random string SHARED with Worker
 - `PUBLIC_BASE_URL` = `https://<web-host>` (set AFTER first deploy)
@@ -83,7 +84,7 @@ Optional (Billing)
 
 Optional (Security)
 - `ALLOWED_UPLOAD_EXT`, `ALLOWED_UPLOAD_MIME` = tighten accepted file types (comma-separated).
-- `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_TIMEOUT_MS`, `CLAMAV_FAIL_CLOSED` = enable ClamAV scanning (recommended).
+- `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_TIMEOUT_MS`, `CLAMAV_FAIL_CLOSED` = enable ClamAV scanning (recommended). Leave `CLAMAV_FAIL_CLOSED=1` in production so infected uploads are rejected.
 
 Notes
 - API listens on port 8080; health at `/health`.
@@ -102,7 +103,7 @@ Required
 - `OPENAI_MODEL_MINI` = e.g., `gpt-5-mini`
 - `OPENAI_EMBEDDINGS_MODEL` = e.g., `text-embedding-3-small`
 - `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` = same as API
-- `API_URL` = `https://<api-host>` (set AFTER first deploy)
+- `API_URL` = `https://<api-host>` (set AFTER first deploy). Do not use HTTP.
 - `INTERNAL_API_KEY` = EXACTLY the same value as API
 
 Optional
@@ -117,6 +118,7 @@ Notes
 ## Secrets: How to Choose and Store
 
 - Use a password manager to generate random values (32-64 bytes, base64url) for: `NEXTAUTH_SECRET`, `JWT_SECRET`/`API_JWT_SECRET`, `ADMIN_API_KEY`, `INTERNAL_API_KEY`.
+- Document a rotation cadence (at least quarterly) for every shared secret and log the date of the last rotate.
 - Store them as Render “Secret Files” or Environment Variables; avoid committing any secrets to the repo.
 - For shared secrets (`INTERNAL_API_KEY`), define them once and reference from both API and Worker. Do not use `fromService` for secrets that must be identical across services.
 

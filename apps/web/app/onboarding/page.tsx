@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -126,7 +126,7 @@ export default function Onboarding() {
         <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Guided setup
         </span>
-        <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">Let’s tailor Joslyn for your family.</h1>
+        <h1 className="text-3xl font-heading text-slate-900 sm:text-4xl">Let's tailor Joslyn for your family.</h1>
         <p className="max-w-2xl text-sm text-slate-500">
           This walkthrough uses a demo IEP so you can see Joslyn in action. Swap in your own paperwork at any time.
         </p>
@@ -148,7 +148,7 @@ export default function Onboarding() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-6">
               <h2 className="text-2xl font-heading text-slate-900">Start with a child profile</h2>
-              <p className="text-sm text-slate-600">We’ll create a safe workspace for your child. Later, add strengths, sensory preferences, and team members.</p>
+              <p className="text-sm text-slate-600">We'll create a safe workspace for your child. Later, add strengths, sensory preferences, and team members.</p>
               <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" onClick={createChild} disabled={loading}>
                 {loading ? "Creating..." : "Create child workspace"}
               </button>
@@ -165,7 +165,7 @@ export default function Onboarding() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
               <h2 className="text-2xl font-heading text-slate-900">Upload or explore with a sample IEP</h2>
-              <p className="text-sm text-slate-600">Drop in a document anytime. For this walkthrough we’ll use a short demo IEP to show what Joslyn surfaces.</p>
+              <p className="text-sm text-slate-600">Drop in a document anytime. For this walkthrough we'll use a short demo IEP to show what Joslyn surfaces.</p>
               <div className="flex flex-wrap gap-3">
                 <button className="inline-flex items-center rounded-full border border-brand-200 px-5 py-2 text-sm font-semibold text-brand-600 transition hover:border-brand-400" disabled>
                   Upload my IEP (coming soon)
@@ -195,9 +195,9 @@ export default function Onboarding() {
             <aside className="rounded-2xl border border-slate-200 bg-white p-5 text-xs text-slate-500">
               <p className="font-heading text-sm text-slate-700">What we extract</p>
               <ul className="mt-3 space-y-2">
-                <li>• Service minutes and providers</li>
-                <li>• Goals and progress notes</li>
-                <li>• Dates, accommodations, and red flags</li>
+                <li>Service minutes and providers</li>
+                <li>Goals and progress notes</li>
+                <li>Dates, accommodations, and red flags</li>
               </ul>
             </aside>
           </div>
@@ -207,7 +207,7 @@ export default function Onboarding() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
               <h2 className="text-2xl font-heading text-slate-900">Let Joslyn walk the IEP with you</h2>
-              <p className="text-sm text-slate-600">We’ll generate a quick brief and answer a sample question about services and minutes.</p>
+              <p className="text-sm text-slate-600">We'll generate a quick brief and answer a sample question about services and minutes.</p>
               <button className="inline-flex items-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-uplift transition hover:bg-brand-600" onClick={runBriefAsk} disabled={loading || !docId}>
                 {loading ? "Creating brief..." : "Run brief & ask"}
               </button>
@@ -216,7 +216,7 @@ export default function Onboarding() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Answer highlight</p>
                   <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{answer}</p>
                   <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600" href={docId ? `/documents/${docId}/view` : "#"}>
-                    View citations and highlights ?
+                    View citations and highlights
                   </Link>
                 </div>
               )}
@@ -257,19 +257,19 @@ export default function Onboarding() {
               )}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
                 <p className="font-heading text-sm text-slate-700">Need a human check?</p>
-                <p className="mt-1 text-xs">Book a session with a Joslyn AI care guide. We’re former educators and advocates who speak parent.
+                <p className="mt-1 text-xs">Book a session with a Joslyn AI care guide. We're former educators and advocates who speak parent.
                 </p>
                 <Link className="mt-3 inline-flex items-center text-xs font-semibold text-brand-600" href="mailto:hello@joslyn.ai">
-                  Schedule a session ?
+                  Schedule a session
                 </Link>
               </div>
             </div>
             <aside className="rounded-2xl border border-slate-200 bg-white p-5 text-xs text-slate-500">
-              <p className="font-heading text-sm text-slate-700">What’s next?</p>
+              <p className="font-heading text-sm text-slate-700">What's next?</p>
               <ul className="mt-3 space-y-2">
-                <li>• Invite your IEP team to the workspace</li>
-                <li>• Translate your child story to Spanish in one click</li>
-                <li>• Track reimbursements and upcoming meetings</li>
+                <li>Invite your IEP team to the workspace</li>
+                <li>Translate your child story to Spanish in one click</li>
+                <li>Track reimbursements and upcoming meetings</li>
               </ul>
             </aside>
           </div>

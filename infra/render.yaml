@@ -28,6 +28,8 @@ services:
         value: production
       - key: PORT
         value: 8080
+      - key: RUN_MIGRATIONS
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: iep-ally-postgres
@@ -59,6 +61,12 @@ services:
         value: 587
       - key: MAIL_FROM
         value: no-reply@joslyn-ai.app
+      - key: CLAMAV_HOST
+        sync: false
+      - key: CLAMAV_PORT
+        value: 3310
+      - key: CLAMAV_FAIL_CLOSED
+        value: "1"
       - key: ADMIN_API_KEY
         generateValue: true
       - key: INTERNAL_API_KEY
