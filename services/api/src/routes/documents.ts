@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
+import { fileTypeFromBuffer } from "file-type";
 import { prisma } from "../lib/db.js";
 import { putObject } from "../lib/s3.js";
 import { enqueue } from "../lib/redis.js";
@@ -47,13 +48,9 @@ function isAllowedMime(mime: string | null | undefined) {
   return ALLOWED_MIME_TYPES.includes(mime.toLowerCase());
 }
 
-let fileTypeModulePromise: Promise<typeof import("file-type")> | null = null;
 async function detectFileType(filePath: string) {
-  if (!fileTypeModulePromise) {
-    fileTypeModulePromise = import("file-type");
-  }
-  const { fileTypeFromFile } = await fileTypeModulePromise;
-  return fileTypeFromFile(filePath);
+  const fileBuffer = await fs.promises.readFile(filePath);
+  return fileTypeFromBuffer(fileBuffer);
 }
 
 export default async function routes(fastify: FastifyInstance) {

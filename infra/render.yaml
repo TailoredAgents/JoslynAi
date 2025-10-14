@@ -13,8 +13,20 @@ services:
         value: /api/joslyn
       - key: JOSLYN_API_ORIGIN
         sync: false
+      - key: API_JWT_SECRET
+        sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
 
   - type: web
     name: iep-ally-api
@@ -51,8 +63,10 @@ services:
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
+      - key: API_JWT_SECRET
+        sync: false
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
       - key: INTERNAL_SELF_BASE
         value: http://iep-ally-api:8080
       - key: MAIL_HOST

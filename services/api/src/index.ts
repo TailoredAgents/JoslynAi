@@ -20,6 +20,8 @@ import extractRoutes from "./routes/extract.js";
 import briefRoutes from "./routes/brief.js";
 import eobRoutes from "./routes/eob.js";
 import { ensureBucket } from "./lib/s3-init.js";
+import { validateRequiredEnv, logOptionalWarnings } from "./lib/env-check.js";
+import { ensureClamAvReadiness } from "./lib/clamav.js";
 import timelineTool from "./tools/timeline.js";
 import letterTool from "./tools/letter.js";
 import smartAttachments from "./tools/smart-attachments.js";
@@ -61,6 +63,13 @@ const app = Fastify({
   },
 });
 
+if (!process.env.JWT_SECRET && process.env.API_JWT_SECRET) {
+  process.env.JWT_SECRET = process.env.API_JWT_SECRET;
+}
+
+validateRequiredEnv();
+logOptionalWarnings();
+
 const rawJwtSecret = process.env.JWT_SECRET || process.env.API_JWT_SECRET;
 // Enforce JWT secret presence in production
 if ((process.env.NODE_ENV === "production") && !rawJwtSecret) {
@@ -76,6 +85,8 @@ await app.register(fastifyRawBody, {
   encoding: "utf8",
   runFirst: true,
 });
+
+await ensureClamAvReadiness();
 
 // CORS: allow explicit origins via CORS_ORIGINS (comma-separated) or PUBLIC_BASE_URL; default open in dev
 const rawAllowed = (process.env.CORS_ORIGINS || process.env.PUBLIC_BASE_URL || "").trim();

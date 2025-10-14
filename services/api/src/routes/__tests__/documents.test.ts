@@ -18,7 +18,7 @@ const orgIdFromRequest = vi.fn(() => "org-test");
 const putObject = vi.fn(async () => ({}));
 const enqueue = vi.fn(async () => {});
 const scanFileForViruses = vi.fn(async () => {});
-const fileTypeFromFile = vi.fn(async () => ({ mime: "application/pdf" }));
+const fileTypeFromBuffer = vi.fn(async () => ({ mime: "application/pdf" }));
 
 vi.mock("../../lib/db.js", () => ({
   prisma: {
@@ -52,7 +52,7 @@ vi.mock("../../lib/clamav.js", () => ({
 }));
 
 vi.mock("file-type", () => ({
-  fileTypeFromFile,
+  fileTypeFromBuffer,
 }));
 
 const __filename = fileURLToPath(import.meta.url);
@@ -89,7 +89,7 @@ describe("documents upload validation", () => {
     putObject.mockResolvedValue({});
     enqueue.mockResolvedValue(undefined);
     scanFileForViruses.mockResolvedValue(undefined);
-    fileTypeFromFile.mockResolvedValue({ mime: "application/pdf" });
+    fileTypeFromBuffer.mockResolvedValue({ mime: "application/pdf" });
     resolveChildId.mockImplementation(async (id: string) => (id === "missing" ? null : `child-${id}`));
   });
 
@@ -127,7 +127,7 @@ describe("documents upload validation", () => {
   });
 
   it("rejects when MIME detection returns disallowed type", async () => {
-    fileTypeFromFile.mockResolvedValueOnce({ mime: "application/x-msdownload" });
+    fileTypeFromBuffer.mockResolvedValueOnce({ mime: "application/x-msdownload" });
     const fastify = await buildServer();
     const form = buildForm(samplePdf, "sample.pdf");
     const response = await fastify.inject({

@@ -30,7 +30,8 @@ Database
 
 - Migrate schema and enable extensions/triggers:
   - `make migrate`
-  - or: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/joslyn_ai pnpm db:migrate`
+  - or: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/joslyn_ai pnpm db:migrate` to apply existing migrations
+  - use `pnpm --filter @joslyn-ai/db run migrate:dev` to create a new migration during development (writes to `packages/db/prisma/migrations/*`)
 
 Local dev (without Compose)
 
@@ -61,9 +62,11 @@ Services
 - Web (apps/web)
 - API (services/api)
 - Worker (services/worker)
-  - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, `JOB_QUEUE_LOG_INTERVAL`, and `JOB_DEAD_LETTER_QUEUE` for retry/backoff logging and dead-letter handling.
+  - Controls: adjust `JOB_MAX_RETRIES`, `JOB_RETRY_BACKOFF_SECONDS`, `JOB_QUEUE_LOG_INTERVAL`, `JOB_VISIBILITY_TIMEOUT_SECONDS`, and `JOB_DEAD_LETTER_QUEUE` for retry/backoff logging, automatic requeues, and dead-letter handling. Set `JOB_PROCESSING_QUEUE` only when sharding workers.
 - DB schema + extensions (packages/db)
 - Mobile preview (apps/mobile) - native shell that points to the full web workspace while mobile features are in design.
+- Billing webhooks that fail are captured in `webhook_failures`. Reconcile manually with `pnpm webhooks:reconcile` once secrets are restored or the underlying issue is fixed.
+- See `docs/ALERTING_EXAMPLES.md` for Prometheus/Grafana/Render snippets to monitor queue depth and webhook health.
 
 Minimal endpoints
 
@@ -73,7 +76,8 @@ Minimal endpoints
 Deploy (Render)
 
 - Push to GitHub. In Render, create a new Blueprint with `infra/render.yaml`.
-- Provide env vars: `OPENAI_API_KEY`, S3/R2 creds, Stripe (optional), admin/internal keys, etc.
+- Provide env vars: `API_JWT_SECRET` (shared between web + API), `INTERNAL_API_KEY`, `OPENAI_API_KEY`, `REDIS_URL`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, SMTP creds, Stripe (optional), `ADMIN_API_KEY`.
+- Ensure `CLAMAV_HOST`, `CLAMAV_PORT`, and `CLAMAV_FAIL_CLOSED` point at a managed ClamAV instance; the API will refuse to boot in fail-closed mode if the scanner is unreachable.
 
 Dev samples
 

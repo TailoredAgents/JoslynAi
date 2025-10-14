@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { orgsUpsert, orgMembersUpsert, entitlementsUpsert } = vi.hoisted(() => ({
@@ -31,7 +31,7 @@ describe("POST /orgs/bootstrap", () => {
     entitlementsUpsert.mockResolvedValue({});
 
     app = Fastify();
-    app.addHook("preHandler", async (req) => {
+    app.addHook("preHandler", async (req: FastifyRequest) => {
       (req as any).user = user;
     });
     const routes = (await importRoutes()).default;

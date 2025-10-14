@@ -15,6 +15,26 @@ from src.runner import JobRunner
 from src.state import WorkerState
 from src.httpd import start_health_server
 
+def _require_production_env() -> None:
+    if os.getenv("NODE_ENV") != "production":
+        return
+    required = [
+        "REDIS_URL",
+        "OPENAI_API_KEY",
+        "S3_ENDPOINT",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "DATABASE_URL",
+        "INTERNAL_API_KEY",
+    ]
+    missing = [name for name in required if not os.getenv(name)]
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(f"Missing required environment variables for production: {joined}")
+
+_require_production_env()
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 r = redis.from_url(REDIS_URL, decode_responses=True)
 
@@ -28,6 +48,8 @@ QUEUE_POLL_TIMEOUT = int(os.getenv("JOB_QUEUE_POLL_TIMEOUT", "5"))
 JOB_RUNNER_FAILURE_SLEEP = float(os.getenv("JOB_RUNNER_FAILURE_SLEEP", "1.0"))
 JOB_STALL_THRESHOLD_SECONDS = float(os.getenv("JOB_STALL_THRESHOLD_SECONDS", "300"))
 JOB_FAILURE_THRESHOLD = int(os.getenv("JOB_FAILURE_THRESHOLD", "5"))
+JOB_VISIBILITY_TIMEOUT = float(os.getenv("JOB_VISIBILITY_TIMEOUT_SECONDS", "300"))
+JOB_PROCESSING_QUEUE = os.getenv("JOB_PROCESSING_QUEUE", f"{QUEUE_NAME}:processing")
 DEFAULT_TZ = "UTC"
 
 JOB_HANDLERS = registry.handlers
@@ -1867,7 +1889,12 @@ def handle_prep_recommendations(task: Dict[str, Any]) -> None:
         except Exception as inner:
             print("[WORKER] prep_recommendations error mark failed:", inner)
 def run():
-    log_event("worker.start", queue=QUEUE_NAME, retries=MAX_JOB_RETRIES)
+    log_event(
+        "worker.start",
+        queue=QUEUE_NAME,
+        retries=MAX_JOB_RETRIES,
+        visibility_timeout=JOB_VISIBILITY_TIMEOUT,
+    )
     state = WorkerState(
         stall_threshold_seconds=JOB_STALL_THRESHOLD_SECONDS,
         failure_threshold=JOB_FAILURE_THRESHOLD,
@@ -1878,6 +1905,8 @@ def run():
         state=state,
         queue_name=QUEUE_NAME,
         dead_letter_queue=JOB_DEAD_LETTER_QUEUE,
+        processing_queue=JOB_PROCESSING_QUEUE,
+        visibility_timeout_seconds=JOB_VISIBILITY_TIMEOUT,
         max_retries=MAX_JOB_RETRIES,
         backoff_seconds=JOB_RETRY_BACKOFF_SECONDS,
         max_delay_seconds=JOB_RETRY_MAX_DELAY,

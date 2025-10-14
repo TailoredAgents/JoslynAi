@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import Stripe from "stripe";
 import { prisma } from "../lib/db.js";
 import { FEATURES_BY_PLAN, getFeaturesForPlan } from "../lib/entitlements.js";
+import { recordWebhookFailure, recordWebhookSuccess, recordWebhookSkip } from "../lib/webhook-failures.js";
 
 export default async function routes(app: FastifyInstance) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -138,17 +139,28 @@ export default async function routes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid_signature" });
     }
 
+    const eventType = event.type || "unknown";
+    let handled = false;
     try {
       if (
         event.type === "customer.subscription.updated" ||
         event.type === "checkout.session.completed" ||
         event.type === "customer.subscription.deleted"
       ) {
+        handled = true;
         const obj: any = event.data?.object || {};
         const meta: any = obj.metadata || {};
         const org_id = meta.org_id || obj.client_reference_id;
         if (!org_id) {
-          app.log.warn({ eventId: event.id }, "stripe webhook missing org_id");
+          app.log.warn({ eventId: event.id, eventType }, "stripe webhook missing org_id");
+          await recordWebhookFailure({
+            eventId: event.id,
+            eventType,
+            orgId: null,
+            errorCode: "org_missing",
+            errorMessage: "Webhook payload missing org_id",
+            payload: obj,
+          });
         } else {
           let plan = String(obj.items?.data?.[0]?.price?.nickname || "basic").toLowerCase();
           // Normalize common aliases
@@ -162,11 +174,26 @@ export default async function routes(app: FastifyInstance) {
             update: { plan, features_json: features },
             create: { org_id, plan, features_json: features },
           });
+          await recordWebhookSuccess(event.id, eventType, org_id);
+          app.log.info({ eventId: event.id, eventType, orgId: org_id, plan }, "stripe webhook processed");
         }
       }
     } catch (e) {
-      app.log.error({ e, eventId: event.id }, "stripe webhook processing error");
+      app.log.error({ e, eventId: event.id, eventType }, "stripe webhook processing error");
+      await recordWebhookFailure({
+        eventId: event.id,
+        eventType,
+        orgId: (event.data?.object as any)?.metadata?.org_id,
+        errorCode: "processing_error",
+        errorMessage: e instanceof Error ? e.message : String(e),
+        payload: event.data?.object,
+      });
       return reply.code(500).send({ error: "webhook_processing_failed" });
+    }
+
+    if (!handled) {
+      recordWebhookSkip(eventType);
+      app.log.debug({ eventId: event.id, eventType }, "stripe webhook ignored");
     }
 
     return reply.send({ received: true });

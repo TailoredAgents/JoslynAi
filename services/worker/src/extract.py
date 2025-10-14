@@ -6,7 +6,10 @@ from psycopg.types.json import Json
 
 MODEL = os.getenv("OPENAI_MODEL_MINI", "gpt-5-mini")
 API_URL = os.getenv("API_URL", "http://api:8080")
-INTERNAL_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal")
+_default_internal = "dev-internal" if os.getenv("NODE_ENV") != "production" else None
+INTERNAL_KEY = os.getenv("INTERNAL_API_KEY") or (_default_internal or "")
+if not INTERNAL_KEY:
+    raise RuntimeError("INTERNAL_API_KEY must be set for worker EOB ingestion")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 IEP_SCHEMA = {

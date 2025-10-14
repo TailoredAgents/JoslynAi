@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from src.jobs.registry import JobFailed
 from src.metrics import metrics
@@ -19,6 +20,8 @@ class JobRunner:
         state: WorkerState,
         queue_name: str = "jobs",
         dead_letter_queue: str = "jobs:dead",
+        processing_queue: Optional[str] = None,
+        visibility_timeout_seconds: float = 300.0,
         max_retries: int = 3,
         backoff_seconds: float = 2.0,
         max_delay_seconds: float = 30.0,
@@ -33,6 +36,9 @@ class JobRunner:
         self.redis = redis_client
         self.state = state
         self.queue_name = queue_name
+        self.processing_queue = processing_queue or f"{queue_name}:processing"
+        self.processing_claims_key = f"{self.processing_queue}:claims"
+        self.processing_visibility_key = f"{self.processing_queue}:visibility"
         self.dead_letter_queue = dead_letter_queue
         self.max_retries = max(1, max_retries)
         self.backoff_seconds = backoff_seconds
@@ -45,6 +51,12 @@ class JobRunner:
         self.notify_fn = notify_fn
         self.log_fn = log_fn
         self._last_queue_log = 0.0
+        self.visibility_timeout = max(0.0, float(visibility_timeout_seconds or 0))
+        if self.visibility_timeout:
+            self._requeue_scan_interval = max(5.0, min(self.queue_log_interval, self.visibility_timeout / 2))
+        else:
+            self._requeue_scan_interval = 0.0
+        self._last_requeue_scan = 0.0
 
     # ------------------------------------------------------------------ loop -
 
@@ -58,17 +70,24 @@ class JobRunner:
                 time.sleep(self.failure_sleep_seconds)
 
     def _tick(self) -> None:
-        job = self.redis.blpop(self.queue_name, timeout=self.queue_poll_timeout)
-        if not job:
+        try:
+            claimed = self._claim_next_job()
+        except Exception:
+            time.sleep(self.failure_sleep_seconds)
+            return
+
+        if not claimed:
             self._handle_idle()
             return
 
-        _, payload = job
+        claim_token, payload = claimed
+
         try:
             task = json.loads(payload)
         except Exception as exc:
             self.state.mark_job_failure(str(exc))
             self.log_fn("job.payload_error", error=str(exc))
+            self._ack_job(claim_token, payload)
             return
 
         kind = (task.get("kind") or "").lower()
@@ -109,12 +128,52 @@ class JobRunner:
             self._record_duration(kind, start)
             self.state.mark_job_success()
             self.log_fn("job.success", kind=kind, job_id=job_id, org_id=org_id)
+        finally:
+            self._ack_job(claim_token, payload)
 
     # --------------------------------------------------------------- helpers -
+
+    def _claim_next_job(self) -> Optional[Tuple[str, str]]:
+        payload = self.redis.brpoplpush(self.queue_name, self.processing_queue, timeout=self.queue_poll_timeout)
+        if not payload:
+            return None
+
+        token = hashlib.sha1(payload.encode("utf-8")).hexdigest()
+        now = time.time()
+        try:
+            pipe = self.redis.pipeline()
+            pipe.hset(self.processing_claims_key, token, payload)
+            if self.visibility_timeout:
+                pipe.zadd(self.processing_visibility_key, {token: now})
+            pipe.execute()
+        except Exception as exc:
+            self.state.record_loop_error(str(exc))
+            self.log_fn("job.claim_error", error=str(exc))
+            try:
+                self.redis.lpush(self.queue_name, payload)
+            except Exception:
+                pass
+            raise
+        return token, payload
+
+    def _ack_job(self, token: str, payload: str) -> None:
+        try:
+            pipe = self.redis.pipeline()
+            pipe.lrem(self.processing_queue, 0, payload)
+            pipe.hdel(self.processing_claims_key, token)
+            if self.visibility_timeout:
+                pipe.zrem(self.processing_visibility_key, token)
+            pipe.execute()
+        except Exception as exc:
+            self.state.record_loop_error(str(exc))
+            self.log_fn("job.ack_error", token=token, error=str(exc))
 
     def _handle_idle(self) -> None:
         now = time.time()
         self.state.record_idle()
+        if self.visibility_timeout:
+            self._requeue_expired_jobs(now)
+
         if now - self._last_queue_log >= self.queue_log_interval:
             try:
                 depth = self.redis.llen(self.queue_name)
@@ -133,6 +192,39 @@ class JobRunner:
             except Exception as exc:
                 self.state.record_notify_error(str(exc))
                 self.log_fn("notify.error", error=str(exc))
+
+    def _requeue_expired_jobs(self, now: float) -> None:
+        if not self.visibility_timeout:
+            return
+        if self._requeue_scan_interval and now - self._last_requeue_scan < self._requeue_scan_interval:
+            return
+
+        cutoff = now - self.visibility_timeout
+        try:
+            expired_tokens = self.redis.zrangebyscore(self.processing_visibility_key, 0, cutoff)
+        except Exception as exc:
+            self.state.record_loop_error(str(exc))
+            self.log_fn("job.requeue_scan_error", error=str(exc))
+            self._last_requeue_scan = now
+            return
+
+        for token in expired_tokens:
+            payload = self.redis.hget(self.processing_claims_key, token)
+            if not payload:
+                self.redis.zrem(self.processing_visibility_key, token)
+                continue
+            pipe = self.redis.pipeline()
+            pipe.lrem(self.processing_queue, 0, payload)
+            pipe.hdel(self.processing_claims_key, token)
+            pipe.zrem(self.processing_visibility_key, token)
+            pipe.lpush(self.queue_name, payload)
+            try:
+                pipe.execute()
+                self.log_fn("job.requeued", token=token)
+            except Exception as exc:
+                self.state.record_loop_error(str(exc))
+                self.log_fn("job.requeue_error", token=token, error=str(exc))
+        self._last_requeue_scan = now
 
     def _record_duration(self, kind: str, started_at: float) -> None:
         duration = time.perf_counter() - started_at

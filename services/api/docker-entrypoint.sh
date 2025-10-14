@@ -18,8 +18,8 @@ fi
 
 # Optional migrations/extensions at startup (disabled by default in production)
 if [ "${RUN_MIGRATIONS}" = "true" ]; then
-  echo "[entrypoint] Running Prisma db push and extension scripts..."
-  pnpm --filter @joslyn-ai/db exec prisma db push --schema prisma/schema.prisma ${ACCEPT_DATA_LOSS:+--accept-data-loss}
+  echo "[entrypoint] Running Prisma migrate deploy..."
+  pnpm --filter @joslyn-ai/db exec prisma migrate deploy --schema prisma/schema.prisma
   pnpm --filter @joslyn-ai/db exec prisma db execute --file prisma/extensions.sql --schema prisma/schema.prisma || true
   pnpm --filter @joslyn-ai/db exec prisma db execute --file prisma/rls.sql --schema prisma/schema.prisma || true
 else

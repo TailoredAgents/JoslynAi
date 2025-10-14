@@ -15,7 +15,10 @@
     "build": "tsc -p tsconfig.json",
     "lint": "echo 'no lint in db yet'",
     "typecheck": "echo 'no types in db'",
-    "migrate": "prisma db push && prisma db execute --file prisma/extensions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rls.sql --schema prisma/schema.prisma"
+    "migrate": "pnpm run migrate:deploy",
+    "migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma && pnpm run apply-sql",
+    "migrate:dev": "prisma migrate dev --schema prisma/schema.prisma && pnpm run apply-sql",
+    "apply-sql": "prisma db execute --file prisma/extensions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rls.sql --schema prisma/schema.prisma"
   },
   "devDependencies": {
     "prisma": "5.18.0",
